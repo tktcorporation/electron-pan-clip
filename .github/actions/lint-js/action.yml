@@ -1,0 +1,68 @@
+name: 'JavaScriptコードのLint'
+description: 'ESLint、TypeScript、Prettierによるコード品質チェック'
+
+inputs:
+  node-version:
+    description: 'Node.jsのバージョン (空の場合は.node-versionを使用)'
+    required: false
+    default: ''
+  lint-command:
+    description: 'ESLintを実行するコマンド'
+    required: false
+    default: 'npm run lint'
+  format-command:
+    description: 'フォーマットをチェックするコマンド'
+    required: false
+    default: 'npm run format:check'
+  typecheck-command:
+    description: '型チェックを実行するコマンド'
+    required: false
+    default: 'npm run typecheck'
+  working-directory:
+    description: '作業ディレクトリ'
+    required: false
+    default: '.'
+  check-uncommitted:
+    description: '未コミットの変更をチェックするかどうか'
+    required: false
+    default: 'true'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version-file: ${{ inputs.node-version == '' && '.node-version' || '' }}
+        node-version: ${{ inputs.node-version != '' && inputs.node-version || '' }}
+        cache: 'npm'
+    
+    - name: Install dependencies
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: npm ci
+    
+    - name: ESLint
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.lint-command }}
+    
+    - name: Check Format
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.format-command }}
+    
+    - name: Type Check
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.typecheck-command }}
+    
+    - name: Check for uncommitted changes
+      if: inputs.check-uncommitted == 'true'
+      shell: bash
+      run: |
+        if [[ -n $(git status --porcelain) ]]; then
+          echo "未コミットの変更があります。まず以下の変更をコミットしてください："
+          git status --porcelain
+          exit 1
+        fi 

@@ -1,0 +1,53 @@
+name: 'Rustコードのlint'
+description: 'ClippyとRustfmtによるRustコード品質チェック'
+
+inputs:
+  toolchain:
+    description: 'Rustのツールチェーン'
+    required: false
+    default: 'stable'
+  components:
+    description: 'インストールするコンポーネント'
+    required: false
+    default: 'rustfmt, clippy'
+  clippy-options:
+    description: 'Clippyのオプション'
+    required: false
+    default: '--all-features --all-targets -- -D warnings'
+  check-documentation:
+    description: 'ドキュメントのチェックを実行するかどうか'
+    required: false
+    default: 'true'
+  cache-key:
+    description: 'キャッシュのキー'
+    required: false
+    default: 'lint-rust'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: ${{ inputs.toolchain }}
+        override: true
+        components: ${{ inputs.components }}
+        
+    - name: Cache Rust dependencies
+      uses: Swatinem/rust-cache@v2
+      with:
+        key: ${{ inputs.cache-key }}
+        
+    - name: Check format
+      shell: bash
+      run: cargo fmt --all -- --check
+        
+    - name: Clippy
+      shell: bash
+      run: cargo clippy ${{ inputs.clippy-options }}
+      
+    - name: Check documentation
+      if: inputs.check-documentation == 'true'
+      shell: bash
+      run: RUSTDOCFLAGS='-D warnings' cargo doc --no-deps 

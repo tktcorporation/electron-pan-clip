@@ -1,0 +1,27 @@
+# typos設定ファイル
+# https://github.com/crate-ci/typos
+
+[default]
+# 大文字と小文字を区別する
+check-case = true
+extend-ignore-re = [
+  # 正規表現で無視するパターン
+  "\\b[A-Z0-9]{32}\\b", # APIキーなど
+  "[a-f0-9]{40}",      # ハッシュ値
+]
+
+[default.extend-words]
+# 辞書に追加するカスタム単語
+"electron-pan-clip" = "electron-pan-clip"
+
+[files]
+# 除外するディレクトリやファイル
+extend-exclude = [
+  "node_modules/*",
+  "target/*",
+  "dist/*",
+  "*.lock",
+  "*.node",
+  "*.min.js",
+  "*.map"
+] 
