@@ -1,5 +1,5 @@
 name: 'JavaScriptコードのLint'
-description: 'ESLint、TypeScript、Prettierによるコード品質チェック'
+description: 'Lint、Formatチェック'
 
 inputs:
   node-version:
@@ -7,17 +7,17 @@ inputs:
     required: false
     default: ''
   lint-command:
-    description: 'ESLintを実行するコマンド'
+    description: 'Lintを実行するコマンド'
     required: false
-    default: 'npm run lint'
+    default: 'nr ci'
   format-command:
     description: 'フォーマットをチェックするコマンド'
     required: false
-    default: 'npm run format:check'
+    default: 'nr format:check'
   typecheck-command:
     description: '型チェックを実行するコマンド'
     required: false
-    default: 'npm run typecheck'
+    default: 'nr check:types'
   working-directory:
     description: '作業ディレクトリ'
     required: false
@@ -47,7 +47,7 @@ runs:
       working-directory: ${{ inputs.working-directory }}
       run: nci
     
-    - name: ESLint
+    - name: Lint
       shell: bash
       working-directory: ${{ inputs.working-directory }}
       run: ${{ inputs.lint-command }}
