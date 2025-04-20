@@ -101,10 +101,7 @@ jobs:
         with:
           node-version: ''
           package-path: '.'
-      
-      - name: Install dependencies
-        run: npm ci
-      
+
       # package.jsonのバージョン更新（手動実行時のみ）
       - name: バージョン更新
         if: github.event_name == 'workflow_dispatch'

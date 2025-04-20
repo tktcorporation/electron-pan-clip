@@ -33,4 +33,4 @@ runs:
     - name: 依存関係インストール
       shell: bash
       working-directory: ${{ inputs.package-path }}
-      run: npm ci 
+      run: nci
