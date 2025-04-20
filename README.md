@@ -78,3 +78,88 @@ yarn test
 ## ライセンス
 
 MIT
+
+# npm自動パブリッシュワークフロー
+
+このリポジトリには、npmパッケージを自動的にパブリッシュするためのGitHub Actionsワークフローが含まれています。
+
+## セットアップ手順
+
+### 1. NPMトークンの設定
+
+1. npmアカウントで新しいアクセストークンを生成します：
+   - [npmのウェブサイト](https://www.npmjs.com/)にログイン
+   - 右上のプロフィールアイコン → Access Tokens → Generate New Token
+   - トークンをコピー
+
+2. GitHubリポジトリに`NPM_TOKEN`シークレットを追加します：
+   - リポジトリの「Settings」→「Secrets and variables」→「Actions」
+   - 「New repository secret」をクリック
+   - 名前: `NPM_TOKEN`、値: コピーしたnpmトークン
+
+### 2. コンベンショナルコミットの利用
+
+このワークフローでは、[git-cliff](https://github.com/orhun/git-cliff)を使用してコミット履歴から自動的にCHANGELOGを生成します。効果的に活用するために、以下のコミットメッセージ形式（[Conventional Commits](https://www.conventionalcommits.org/)）を採用してください：
+
+```
+<type>[(optional scope)]: <description>
+
+[optional body]
+
+[optional footer]
+```
+
+主なタイプ:
+- `feat`: 新機能の追加
+- `fix`: バグ修正
+- `doc`: ドキュメントの変更のみ
+- `perf`: パフォーマンスを向上させるコード変更
+- `refactor`: バグ修正でも機能追加でもないコード変更
+- `style`: コードの意味に影響しない変更（空白、フォーマット、セミコロン追加など）
+- `test`: テストの追加や修正
+- `chore`: その他の変更（ビルドプロセスなど）
+
+例:
+```
+feat(core): ファイルコピー機能の追加
+fix(windows): Windowsプラットフォームでのパス解決の問題を修正
+doc: READMEの更新
+```
+
+**注意**:
+- スコープを含めると、変更されたコンポーネントやモジュールを明示できます（例: `feat(core):`, `fix(windows):`）
+- 破壊的変更を含む場合は、コミットタイプやスコープの後に `!` を追加するか、フッターに `BREAKING CHANGE:` を記述します
+
+## ワークフローの使い方
+
+### バージョンの更新
+
+1. GitHubリポジトリの「Actions」タブを開く
+2. 「Version Bump」ワークフローを選択
+3. 「Run workflow」をクリック
+4. 更新タイプ（patch, minor, major）を選択して実行
+
+これにより以下が自動的に行われます：
+- パッケージバージョンが更新される
+- git-cliffによるCHANGELOGの自動生成
+- 変更のコミットとタグ作成
+- 新しいタグのプッシュ
+
+### リリースの作成
+
+「Version Bump」ワークフローが完了すると、「Create Release」ワークフローが自動的に起動します：
+- 自動生成されたCHANGELOGからリリースノートを抽出
+- GitHub Releaseを作成
+- リリース作成により「Publish NPM Package」ワークフローが起動
+
+### npmへのパブリッシュ
+
+リリースが作成されると、「Publish NPM Package」ワークフローが自動的に実行されます：
+- コードをチェックアウト
+- 依存関係をインストール
+- テストとビルドを実行
+- npmにパッケージをパブリッシュ
+
+## 手動パブリッシュ
+
+リポジトリの「Actions」タブから「Publish NPM Package」ワークフローを選択し、「Run workflow」をクリックすることで、手動でパブリッシュすることも可能です。
