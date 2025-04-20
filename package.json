@@ -13,7 +13,9 @@
     "jsdoc": "^4.0.4",
     "minami": "^1.2.3",
     "taffydb": "^2.7.3",
-    "vitest": "^3.1.1"
+    "vitest": "^3.1.1",
+    "@biomejs/biome": "^1.5.3",
+    "typescript": "^5.0.0"
   },
   "engines": {
     "node": ">= 22"
@@ -27,7 +29,21 @@
     "test:watch": "vitest",
     "universal": "napi universal",
     "version": "napi version",
-    "docs": "jsdoc -c jsdoc.json"
+    "docs": "jsdoc -c jsdoc.json",
+    "check": "npm run check:format && npm run check:lint",
+    "check:format": "npm run check:format:rust && npm run check:format:ts",
+    "check:lint": "npm run check:lint:rust && npm run check:lint:ts",
+    "check:format:rust": "cargo fmt --all -- --check",
+    "check:format:ts": "biome check --write=false --formatter-enabled=true --linter-enabled=false \"**/*.{js,jsx,ts,tsx}\"",
+    "check:lint:rust": "cargo clippy -- -D warnings",
+    "check:lint:ts": "biome check --write=false --formatter-enabled=false --linter-enabled=true \"**/*.{js,jsx,ts,tsx}\"",
+    "check:types": "tsc --noEmit",
+    "check:oxlint": "oxlint",
+    "pre-push": "npm run check",
+    "ci": "cargo check && cargo clippy --all-targets -- -D warnings && npm run check:types && npm run check:lint:ts",
+    "fmt:ts": "biome format --write \"**/*.{js,jsx,ts,tsx}\"",
+    "lint:fix": "biome check --write \"**/*.{js,jsx,ts,tsx}\"",
+    "biome": "biome"
   },
   "packageManager": "pnpm@8.15.4"
 }

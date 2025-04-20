@@ -1,6 +1,4 @@
-FROM mcr.microsoft.com/devcontainers/base:bookworm
-
-ARG DEBIAN_FRONTEND=noninteractive
+FROM mcr.microsoft.com/devcontainers/rust:latest
 
 # Linuxで必要なシステムライブラリのインストール（クリップボード操作関連）
 RUN apt-get update && apt-get install -y \

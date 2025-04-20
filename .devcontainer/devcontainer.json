@@ -1,23 +1,20 @@
 {
   "name": "Electron-Pan-Clip Dev",
-  "build": {
-    "dockerfile": "Dockerfile",
-    "args": {}
-  },
+  // Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
+  "image": "mcr.microsoft.com/devcontainers/rust:latest",
   "features": {
-    "ghcr.io/devcontainers/features/rust:1": {
-      "version": "latest",
-      "profile": "default"
-    },
     "ghcr.io/devcontainers/features/node:1": {
       "version": "22"
     },
-    "ghcr.io/devcontainers/features/common-utils:2": {
-      "installZsh": true,
-      "configureZshAsDefaultShell": true,
-      "installOhMyZsh": true
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    // add `just` for running scripts
+    "ghcr.io/guiyomh/features/just:0": {
+      "version": "latest"
     },
-    "ghcr.io/devcontainers/features/github-cli:1": {}
+    // add `cargo-binstall` for installing other tools.
+    "ghcr.io/lee-orr/rusty-dev-containers/cargo-binstall:0": {
+      "version": "latest"
+    }
   },
   "forwardPorts": [],
   "customizations": {
@@ -33,6 +30,5 @@
 		}
 	},
   "runArgs": ["--env-file", ".devcontainer/.env"],
-  "postCreateCommand": "cargo install cargo-watch && npm install -g pnpm typescript @napi-rs/cli @antfu/ni",
-  "remoteUser": "vscode"
+  "postCreateCommand": "just init"
 } 
