@@ -26,6 +26,13 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: Install Linux dependencies
+      if: runner.os == 'Linux'
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libx11-dev libxext-dev libxrender-dev libxtst-dev libxinerama-dev
+
     - name: Setup Rust
       uses: actions-rs/toolchain@v1
       with:
