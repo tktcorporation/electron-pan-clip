@@ -96,10 +96,11 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
       
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
+      - name: Node.js設定
+        uses: ./.github/actions/node-setup
         with:
-          node-version-file: '.node-version'
+          node-version: ''
+          package-path: '.'
       
       - name: Install dependencies
         run: npm ci

@@ -39,17 +39,12 @@ outputs:
 runs:
   using: "composite"
   steps:
-    - name: Setup Node.js
-      uses: actions/setup-node@v3
+    - name: Node.js設定
+      uses: ./.github/actions/node-setup
       with:
-        node-version-file: ${{ inputs.node-version == '' && '.node-version' || '' }}
-        node-version: ${{ inputs.node-version != '' && inputs.node-version || '' }}
+        node-version: ${{ inputs.node-version }}
         registry-url: ${{ inputs.registry-url }}
-    
-    - name: 依存関係インストール
-      shell: bash
-      working-directory: ${{ inputs.package-path }}
-      run: npm ci
+        package-path: ${{ inputs.package-path }}
     
     - name: パッケージバージョン取得
       id: get-version

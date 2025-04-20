@@ -76,10 +76,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
         
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
+      - name: Node.js設定
+        uses: ./.github/actions/node-setup
         with:
-          node-version-file: '.node-version'
+          node-version: ''
+          package-path: '.'
           
       - name: Check file sizes
         run: |

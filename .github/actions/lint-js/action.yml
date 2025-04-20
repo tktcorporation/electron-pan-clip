@@ -30,17 +30,22 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Setup Node.js
-      uses: actions/setup-node@v3
+    - name: Node.js設定
+      uses: ./.github/actions/node-setup
       with:
-        node-version-file: ${{ inputs.node-version == '' && '.node-version' || '' }}
-        node-version: ${{ inputs.node-version != '' && inputs.node-version || '' }}
-        cache: 'npm'
+        node-version: ${{ inputs.node-version }}
+        registry-url: 'https://registry.npmjs.org'
+        package-path: ${{ inputs.working-directory }}
+    
+    - name: add antfu/ni
+      shell: bash
+      run: |
+        npm i -g @antfu/ni
     
     - name: Install dependencies
       shell: bash
       working-directory: ${{ inputs.working-directory }}
-      run: npm ci
+      run: nci
     
     - name: ESLint
       shell: bash

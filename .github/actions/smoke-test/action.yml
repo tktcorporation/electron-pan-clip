@@ -28,12 +28,12 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Setup Node.js
-      uses: actions/setup-node@v3
+    - name: Node.js設定
+      uses: ./.github/actions/node-setup
       with:
-        node-version-file: ${{ inputs.node-version == '' && '.node-version' || '' }}
-        node-version: ${{ inputs.node-version != '' && inputs.node-version || '' }}
+        node-version: ${{ inputs.node-version }}
         registry-url: ${{ inputs.registry-url }}
+        package-path: '.'
     
     - name: Wait for npm registry
       shell: bash
