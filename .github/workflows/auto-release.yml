@@ -1,0 +1,104 @@
+name: Auto Release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'package.json' # package.jsonが変更されたときだけトリガー
+
+jobs:
+  check-version:
+    name: バージョン変更確認
+    runs-on: ubuntu-latest
+    outputs:
+      version_changed: ${{ steps.version-check.outputs.changed }}
+      version: ${{ steps.version-check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: バージョン変更チェック
+        id: version-check
+        uses: ./.github/actions/version-check
+
+  generate-changelog:
+    needs: check-version
+    if: needs.check-version.outputs.version_changed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          
+      - name: CHANGELOG生成
+        uses: ./.github/actions/generate-changelog
+        with:
+          version: ${{ needs.check-version.outputs.version }}
+          commit-changes: 'true'
+          
+  create-release:
+    needs: [check-version, generate-changelog]
+    if: needs.check-version.outputs.version_changed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          ref: main # 最新のコミットを取得するために再度チェックアウト
+          
+      - name: リリースノート抽出
+        id: extract-notes
+        uses: ./.github/actions/extract-release-notes
+        with:
+          version: ${{ needs.check-version.outputs.version }}
+          
+      - name: タグ作成
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git tag -a v${{ needs.check-version.outputs.version }} -m "Release v${{ needs.check-version.outputs.version }}"
+          git push origin v${{ needs.check-version.outputs.version }}
+          
+      - name: GitHub Release作成
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ needs.check-version.outputs.version }}
+          name: Release v${{ needs.check-version.outputs.version }}
+          body: ${{ steps.extract-notes.outputs.notes }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  
+  publish-npm:
+    needs: [check-version, create-release]
+    if: needs.check-version.outputs.version_changed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: npmへパブリッシュ
+        uses: ./.github/actions/npm-publish
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          
+  smoke-test:
+    needs: [check-version, publish-npm]
+    if: needs.check-version.outputs.version_changed == 'true'
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    name: スモークテスト (${{ matrix.os }})
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+          
+      - name: スモークテスト実行
+        uses: ./.github/actions/smoke-test
+        with:
+          package-name: 'electron-pan-clip'
+          version: ${{ needs.check-version.outputs.version }} 

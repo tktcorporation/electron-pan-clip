@@ -1,0 +1,46 @@
+name: Update Dependencies
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '更新するバージョン'
+        required: true
+        type: string
+
+jobs:
+  update-deps:
+    runs-on: ubuntu-latest
+    if: github.repository == 'tktcorporation/electron-pan-clip'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version-file: '.node-version'
+
+      - name: Get version
+        id: get-version
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            # タグ名からvを削除
+            TAG_NAME="${{ github.event.release.tag_name }}"
+            VERSION="${TAG_NAME#v}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "更新対象バージョン: $VERSION"
+
+      - name: Update example repositories
+        if: steps.get-version.outputs.version != ''
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          token: ${{ secrets.REPO_ACCESS_TOKEN }}
+          repository: tktcorporation/electron-pan-clip-examples
+          event-type: update-dependency
+          client-payload: '{"version": "${{ steps.get-version.outputs.version }}"}' 

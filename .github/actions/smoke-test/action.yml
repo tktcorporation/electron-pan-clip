@@ -1,0 +1,62 @@
+name: 'スモークテスト'
+description: 'パブリッシュされたnpmパッケージをインストールしてテストする'
+
+inputs:
+  package-name:
+    description: 'パッケージ名'
+    required: true
+  version:
+    description: 'パッケージバージョン'
+    required: true
+  node-version:
+    description: 'Node.jsのバージョン (空の場合は.node-versionを使用)'
+    required: false
+    default: ''
+  registry-url:
+    description: 'npmレジストリのURL'
+    required: false
+    default: 'https://registry.npmjs.org'
+  wait-time:
+    description: 'パッケージが公開されるまでの待機時間（秒）'
+    required: false
+    default: '30'
+  test-script:
+    description: 'テストスクリプト'
+    required: false
+    default: ''
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version-file: ${{ inputs.node-version == '' && '.node-version' || '' }}
+        node-version: ${{ inputs.node-version != '' && inputs.node-version || '' }}
+        registry-url: ${{ inputs.registry-url }}
+    
+    - name: Wait for npm registry
+      shell: bash
+      run: |
+        echo "パッケージが公開されるまで${{ inputs.wait-time }}秒待機..."
+        sleep ${{ inputs.wait-time }}
+    
+    - name: テスト用ファイル作成
+      shell: bash
+      run: echo "console.log('test');" > test.js
+    
+    - name: パッケージをインストール
+      shell: bash
+      run: |
+        echo "パッケージ ${{ inputs.package-name }}@${{ inputs.version }} をインストール"
+        npm install -g ${{ inputs.package-name }}@${{ inputs.version }}
+    
+    - name: インポートテスト
+      shell: bash
+      run: |
+        node -e "console.log('Imported package:', require('${{ inputs.package-name }}'))"
+    
+    - name: カスタムテスト実行
+      if: inputs.test-script != ''
+      shell: bash
+      run: ${{ inputs.test-script }} 

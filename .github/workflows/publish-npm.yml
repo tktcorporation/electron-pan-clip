@@ -12,22 +12,30 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18.x'
-          registry-url: 'https://registry.npmjs.org'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Test
-        run: npm test
-
-      - name: Build
-        run: npm run build
-
-      - name: Publish to npm
-        run: npm publish
+      - name: パッケージパブリッシュ
+        uses: ./.github/actions/npm-publish
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }} 
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          
+  smoke-test:
+    needs: build-and-publish
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+          
+      - name: パッケージバージョン取得
+        id: get-version
+        shell: bash
+        run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+          
+      - name: スモークテスト実行
+        uses: ./.github/actions/smoke-test
+        with:
+          package-name: 'electron-pan-clip'
+          version: ${{ steps.get-version.outputs.version }} 
