@@ -1,0 +1,37 @@
+{
+  "name": "Electron-Pan-Clip Dev",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "args": {}
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/rust:1": {
+      "version": "latest",
+      "profile": "default"
+    },
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "22"
+    },
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "installZsh": true,
+      "configureZshAsDefaultShell": true,
+      "installOhMyZsh": true
+    }
+  },
+  "forwardPorts": [],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "mhutchie.git-graph",
+        "WakaTime.vscode-wakatime"
+      ],
+			"files.watcherExclude": {
+				"**/.git/*/**": true,
+				"**/node_modules/*/**": true
+			}
+		}
+	},
+  "runArgs": ["--env-file", ".devcontainer/devcontainer.env"],
+  "postCreateCommand": "cargo install cargo-watch && npm install -g pnpm typescript @napi-rs/cli",
+  "remoteUser": "vscode"
+} 

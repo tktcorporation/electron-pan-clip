@@ -1,0 +1,22 @@
+version: '3'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ..:/workspace:cached
+      - node_modules:/workspace/node_modules
+      - cargo_registry:/home/vscode/.cargo/registry
+      - cargo_git:/home/vscode/.cargo/git
+      - cargo_target:/workspace/target
+    command: sleep infinity
+    env_file:
+      - devcontainer.env
+
+volumes:
+  node_modules:
+  cargo_registry:
+  cargo_git:
+  cargo_target: 
