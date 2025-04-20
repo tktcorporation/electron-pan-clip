@@ -1,55 +1,50 @@
 # electron-pan-clip
 
-Electronアプリケーションで複数画像を同時にコピー＆ペーストするためのネイティブライブラリです。
+マルチプラットフォーム対応のElectronアプリケーション用ファイルクリップボードユーティリティ
 
 ## 概要
 
-このライブラリは、Electronアプリケーションから複数のファイル（特に画像）を一度にクリップボードにコピーし、Discordなどの他のアプリケーションに貼り付けることを可能にします。Rustで実装されたネイティブモジュールとして、Windows、macOS、Linuxの各プラットフォームでネイティブのクリップボード操作を提供します。
+このライブラリは、Electronアプリケーションでファイルをクリップボードにコピーするための機能を提供します。Windows、macOS、Linuxの各プラットフォームに対応しています。
 
-## 使い方
-
-```javascript
-import { copyFiles } from 'electron-pan-clip';
-
-// 複数のファイルパスをクリップボードにコピー
-copyFiles([
-  '/path/to/image1.png',
-  '/path/to/image2.jpg'
-]);
-```
-
-## 開発環境
-
-このプロジェクトは開発環境としてDevContainerを使用しています。Visual Studio CodeとDockerをインストールしている場合、以下の手順で開発環境を立ち上げることができます。
-
-1. このリポジトリをクローンします
-2. Visual Studio Codeでプロジェクトを開きます
-3. VSCodeが「Reopen in Container」を提案したら、それをクリックします
-   - もしくはコマンドパレット(`Ctrl+Shift+P` / `Cmd+Shift+P`)で「Remote-Containers: Reopen in Container」を実行します
-
-DevContainerには以下の開発ツールが含まれています：
-
-- Rust + Cargo (ネイティブコード開発用)
-- Node.js + npm/pnpm (JavaScript/TypeScript開発用)
-- napi-rs (RustからNode.jsネイティブモジュールを作成するツール)
-- TypeScript
-- Biome (JavaScript/TypeScriptのリントとフォーマット)
-- 各プラットフォーム用の依存ライブラリ
-
-## プロジェクト構造
-
-```
-/
-├── crate/          # Rustのソースコード
-├── src/            # TypeScriptのラッパーコード
-├── examples/       # 使用例
-├── .devcontainer/  # 開発環境の定義
-└── ...
-```
-
-## 開発コマンド
+## インストール
 
 ```bash
+yarn add electron-pan-clip
+```
+
+または
+
+```bash
+npm install electron-pan-clip
+```
+
+## 使用方法
+
+```javascript
+const { copyFiles } = require('electron-pan-clip');
+
+// 複数のファイルをクリップボードにコピー
+try {
+  const filePaths = ['/path/to/file1.txt', '/path/to/file2.jpg'];
+  copyFiles(filePaths);
+  console.log('ファイルをクリップボードにコピーしました');
+} catch (error) {
+  console.error('エラーが発生しました:', error);
+}
+```
+
+詳細な使用例は [examples](./examples) ディレクトリを参照してください。
+
+## 開発
+
+詳細な開発情報は [docs/README.md](./docs/README.md) を参照してください。
+
+### セットアップ
+
+```bash
+# 依存関係のインストール
+yarn install
+
 # ビルド
 yarn build
 
@@ -57,10 +52,6 @@ yarn build
 yarn test
 ```
 
-## 貢献
-
-プロジェクトへの貢献は大歓迎です。Issue報告、Pull Request、機能提案などお気軽にどうぞ。
-
 ## ライセンス
 
-MITライセンス
+MIT

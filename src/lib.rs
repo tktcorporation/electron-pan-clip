@@ -5,13 +5,28 @@ extern crate napi_derive;
 
 // OS別の実装モジュール
 #[cfg(target_os = "windows")]
-mod windows;
+mod platforms {
+    pub mod windows;
+}
 
 #[cfg(target_os = "macos")]
-mod macos;
+mod platforms {
+    pub mod macos;
+}
 
 #[cfg(target_os = "linux")]
-mod linux;
+mod platforms {
+    pub mod linux;
+}
+
+#[cfg(target_os = "windows")]
+use platforms::windows;
+
+#[cfg(target_os = "macos")]
+use platforms::macos;
+
+#[cfg(target_os = "linux")]
+use platforms::linux;
 
 /// Hello World関数 - 動作確認用
 #[napi]

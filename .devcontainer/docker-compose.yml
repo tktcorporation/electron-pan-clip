@@ -13,7 +13,7 @@ services:
       - cargo_target:/workspace/target
     command: sleep infinity
     env_file:
-      - devcontainer.env
+      - .env
 
 volumes:
   node_modules:

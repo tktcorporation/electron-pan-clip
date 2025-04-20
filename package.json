@@ -10,10 +10,16 @@
   "license": "MIT",
   "devDependencies": {
     "@napi-rs/cli": "^2.18.4",
-    "ava": "^6.0.1"
+    "ava": "^6.0.1",
+    "jsdoc": "^4.0.4",
+    "minami": "^1.2.3",
+    "taffydb": "^2.7.3"
   },
   "ava": {
-    "timeout": "3m"
+    "timeout": "3m",
+    "files": [
+      "tests/**/*.spec.mjs"
+    ]
   },
   "engines": {
     "node": ">= 10"
@@ -25,7 +31,8 @@
     "prepublishOnly": "napi prepublish -t npm",
     "test": "ava",
     "universal": "napi universal",
-    "version": "napi version"
+    "version": "napi version",
+    "docs": "jsdoc -c jsdoc.json"
   },
   "packageManager": "yarn@4.9.1+sha512.f95ce356460e05be48d66401c1ae64ef84d163dd689964962c6888a9810865e39097a5e9de748876c2e0bf89b232d583c33982773e9903ae7a76257270986538"
 }
