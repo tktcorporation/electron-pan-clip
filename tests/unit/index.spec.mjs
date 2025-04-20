@@ -1,7 +1,9 @@
-import test from 'ava'
+import { describe, it, expect } from 'vitest';
+import { helloWorld } from '../../index.js';
 
-import { helloWorld } from '../../index.js'
-
-test('helloWorld from native', (t) => {
-  t.is(helloWorld(), 'Hello from Rust!')
-})
+describe('ネイティブモジュールのテスト', () => {
+  it('helloWorld関数がRustからの文字列を返す', () => {
+    const result = helloWorld();
+    expect(result).toBe('Hello from Rust!');
+  });
+});
