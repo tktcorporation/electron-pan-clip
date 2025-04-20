@@ -9,13 +9,14 @@
   },
   "license": "MIT",
   "devDependencies": {
+    "@biomejs/biome": "^1.5.3",
     "@napi-rs/cli": "^2.18.4",
+    "@types/node": "^22.14.1",
     "jsdoc": "^4.0.4",
     "minami": "^1.2.3",
     "taffydb": "^2.7.3",
-    "vitest": "^3.1.1",
-    "@biomejs/biome": "^1.5.3",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "vitest": "^3.1.1"
   },
   "engines": {
     "node": ">= 22"
@@ -42,7 +43,7 @@
     "pre-push": "npm run check",
     "ci": "cargo check && cargo clippy --all-targets -- -D warnings && npm run check:types && npm run check:lint:ts",
     "fmt:ts": "biome format --write",
-    "lint:fix": "biome check --fix",
+    "lint:fix": "biome check --fix --unsafe",
     "biome": "biome"
   },
   "packageManager": "pnpm@8.15.4"

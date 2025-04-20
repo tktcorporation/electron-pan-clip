@@ -18,7 +18,9 @@
 			"**/node_modules/**",
 			"**/dist/**",
 			"**/build/**",
-			"docs/api/scripts"
+			"docs/api/scripts",
+			"index.d.ts",
+			"index.js"
 		]
 	},
 	"vcs": {
