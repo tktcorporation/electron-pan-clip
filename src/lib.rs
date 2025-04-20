@@ -6,17 +6,17 @@ extern crate napi_derive;
 // OS別の実装モジュール
 #[cfg(target_os = "windows")]
 mod platforms {
-    pub mod windows;
+  pub mod windows;
 }
 
 #[cfg(target_os = "macos")]
 mod platforms {
-    pub mod macos;
+  pub mod macos;
 }
 
 #[cfg(target_os = "linux")]
 mod platforms {
-    pub mod linux;
+  pub mod linux;
 }
 
 #[cfg(target_os = "windows")]
