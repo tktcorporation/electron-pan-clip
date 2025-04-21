@@ -60,8 +60,14 @@ runs:
     - name: ビルド
       shell: bash
       working-directory: ${{ inputs.package-path }}
-      run: ${{ inputs.build-command }}
-    
+      run: |
+        # すべてのプラットフォーム向けにビルド
+        ${{ inputs.build-command }}
+        
+        # ビルド結果を確認
+        echo "ビルドされたバイナリファイルの確認:"
+        find . -name "*.node" | sort
+
     - name: テスト実行
       if: inputs.run-tests == 'true'
       shell: bash

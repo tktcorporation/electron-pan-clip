@@ -54,7 +54,22 @@ runs:
     - name: インポートテスト
       shell: bash
       run: |
-        node -e "console.log('Imported package:', require('${{ inputs.package-name }}'))"
+        echo "実行環境情報:"
+        echo "OS: $(uname -s), アーキテクチャ: $(uname -m)"
+        echo "Node.js バージョン: $(node -v)"
+        
+        # パッケージの詳細を確認
+        echo "パッケージ内容の確認:"
+        npm list -g ${{ inputs.package-name }} --depth=0
+        
+        # インストールされたバイナリの確認
+        NODE_MODULES_PATH=$(npm root -g)
+        echo "インストールされたバイナリファイル:"
+        find $NODE_MODULES_PATH/${{ inputs.package-name }} -name "*.node" | sort
+        
+        # テスト実行
+        echo "パッケージ動作テスト:"
+        NODE_PATH=$(npm root -g) node -e "try { console.log('Imported package:', require('${{ inputs.package-name }}')); } catch (e) { console.error('インポートエラー:', e); process.exit(1); }"
     
     - name: カスタムテスト実行
       if: inputs.test-script != ''

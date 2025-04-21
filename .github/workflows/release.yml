@@ -133,6 +133,88 @@ jobs:
           git push
           git push --tags
   
+  # 各プラットフォーム向けのバイナリをビルド
+  build-binaries:
+    name: バイナリビルド (${{ matrix.name }})
+    needs: [check-version, prepare-release]
+    if: needs.check-version.outputs.should_release == 'true' || github.event_name == 'release'
+    strategy:
+      fail-fast: false  # 一つのビルドが失敗しても他を続行
+      matrix:
+        include:
+          - name: linux-x64
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - name: linux-arm64
+            os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            setup-script: |
+              sudo apt-get update
+              sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libc6-dev-arm64-cross
+              sudo apt-get install -y libx11-dev:arm64 libxext-dev:arm64 libxtst-dev:arm64
+              rustup target add aarch64-unknown-linux-gnu
+          - name: macos-x64
+            os: macos-latest
+            target: x86_64-apple-darwin
+          - name: macos-arm64
+            os: macos-latest
+            target: aarch64-apple-darwin
+            setup-script: rustup target add aarch64-apple-darwin
+          - name: windows-x64
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+    
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event_name == 'release' && github.event.release.tag_name || 'main' }}
+      
+      - name: パッケージバージョン取得
+        id: get-version
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            VERSION="${{ github.event.release.tag_name }}"
+            VERSION="${VERSION#v}"
+          else
+            VERSION="${{ needs.prepare-release.outputs.version }}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+      
+      - name: Node.js設定
+        uses: ./.github/actions/node-setup
+        with:
+          node-version: ''
+          
+      - name: Rust設定
+        uses: ./.github/actions/setup-rust
+        with:
+          toolchain: stable
+      
+      # クロスコンパイル用の追加セットアップ
+      - name: クロスコンパイルセットアップ
+        if: matrix.setup-script != ''
+        shell: bash
+        run: ${{ matrix.setup-script }}
+      
+      # 特定のターゲット向けにビルド
+      - name: バイナリビルド
+        shell: bash
+        run: |
+          napi build --platform --release --target ${{ matrix.target }}
+          find . -name "*.node" | grep "${{ matrix.target }}"
+      
+      # ビルド成果物をアップロード
+      - name: 成果物をアップロード
+        uses: actions/upload-artifact@v3
+        with:
+          name: binaries-${{ matrix.name }}
+          path: |
+            *.node
+            npm/*/electron-pan-clip.*.node
+          if-no-files-found: error
+  
   # GitHub Releaseを作成
   create-release:
     name: GitHubリリース作成
@@ -168,7 +250,7 @@ jobs:
   publish-npm:
     name: npmパブリッシュ
     runs-on: ubuntu-latest
-    needs: [check-version, create-release]
+    needs: [check-version, create-release, build-binaries]
     # リリースの作成もしくはリリースイベントから実行された場合に実行
     if: needs.check-version.outputs.should_release == 'true' || github.event_name == 'release'
     steps:
@@ -176,11 +258,96 @@ jobs:
         with:
           ref: ${{ github.event_name == 'release' && github.event.release.tag_name || 'main' }}
       
+      - name: Node.js設定
+        uses: ./.github/actions/node-setup
+        with:
+          node-version: ''
+      
+      # ビルド成果物をダウンロード
+      - name: 成果物をダウンロード
+        uses: actions/download-artifact@v3
+        with:
+          path: artifacts
+      
+      # 成果物を正しい場所にコピー
+      - name: 成果物を配置
+        shell: bash
+        run: |
+          mkdir -p npm/linux-x64-gnu npm/linux-arm64-gnu npm/darwin-x64 npm/darwin-arm64 npm/win32-x64-msvc
+          
+          # Linux x64
+          if [ -f artifacts/binaries-linux-x64/electron-pan-clip.linux-x64-gnu.node ]; then
+            cp artifacts/binaries-linux-x64/electron-pan-clip.linux-x64-gnu.node npm/linux-x64-gnu/
+          fi
+          
+          # Linux ARM64
+          if [ -f artifacts/binaries-linux-arm64/electron-pan-clip.linux-arm64-gnu.node ]; then
+            cp artifacts/binaries-linux-arm64/electron-pan-clip.linux-arm64-gnu.node npm/linux-arm64-gnu/
+          fi
+          
+          # macOS x64
+          if [ -f artifacts/binaries-macos-x64/electron-pan-clip.darwin-x64.node ]; then
+            cp artifacts/binaries-macos-x64/electron-pan-clip.darwin-x64.node npm/darwin-x64/
+          fi
+          
+          # macOS ARM64
+          if [ -f artifacts/binaries-macos-arm64/electron-pan-clip.darwin-arm64.node ]; then
+            cp artifacts/binaries-macos-arm64/electron-pan-clip.darwin-arm64.node npm/darwin-arm64/
+          fi
+          
+          # Windows x64
+          if [ -f artifacts/binaries-windows-x64/electron-pan-clip.win32-x64-msvc.node ]; then
+            cp artifacts/binaries-windows-x64/electron-pan-clip.win32-x64-msvc.node npm/win32-x64-msvc/
+          fi
+          
+          # 各プラットフォーム用のpackage.jsonを作成
+          for dir in npm/*; do
+            platform=$(basename $dir)
+            if [ -f "$dir/electron-pan-clip.$platform.node" ]; then
+              node -e "
+                const fs = require('fs');
+                const path = require('path');
+                const dir = '$dir';
+                const platform = '$platform';
+                const version = require('./package.json').version;
+                const os = platform.split('-')[0];
+                const cpu = platform.split('-')[1];
+                
+                const pkgJson = {
+                  name: 'electron-pan-clip-'+platform,
+                  version: version,
+                  os: [os],
+                  cpu: [cpu],
+                  main: 'electron-pan-clip.'+platform+'.node',
+                  files: ['electron-pan-clip.'+platform+'.node'],
+                  license: 'MIT',
+                  engines: {
+                    node: '>= 22'
+                  }
+                };
+                
+                fs.writeFileSync(
+                  path.join(dir, 'package.json'),
+                  JSON.stringify(pkgJson, null, 2)
+                );
+                
+                console.log('Created package.json for ' + platform);
+              "
+            fi
+          done
+          
+          # 成果物の確認
+          find npm -type f | sort
+      
+      # バイナリ検証
+      - name: バイナリ検証
+        run: node scripts/verify-binaries.js
+      
       # npmへパブリッシュ
       - name: npmへパブリッシュ
-        uses: ./.github/actions/npm-publish
+        run: npm publish
         env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
   
   # スモークテスト
   smoke-test:
@@ -212,3 +379,4 @@ jobs:
         with:
           package-name: 'electron-pan-clip'
           version: ${{ steps.get-version.outputs.version }}
+          wait-time: '60'

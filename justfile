@@ -22,6 +22,8 @@ init:
   npm install -g pnpm typescript @napi-rs/cli @antfu/ni
   # Node.js related init
   pnpm install
+  # Linuxの依存関係をインストール
+  just install-linux-deps
 
 # 全てのチェックを実行
 check: check-format check-lint

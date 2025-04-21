@@ -5,7 +5,16 @@
   "types": "index.d.ts",
   "napi": {
     "name": "electron-pan-clip",
-    "triples": {}
+    "triples": {
+      "defaults": true,
+      "additional": [
+        "aarch64-unknown-linux-gnu",
+        "aarch64-apple-darwin",
+        "x86_64-apple-darwin",
+        "x86_64-pc-windows-msvc",
+        "x86_64-unknown-linux-gnu"
+      ]
+    }
   },
   "license": "MIT",
   "devDependencies": {
@@ -25,7 +34,7 @@
     "artifacts": "napi artifacts",
     "build": "napi build --platform --release",
     "build:debug": "napi build --platform",
-    "prepublishOnly": "napi prepublish -t npm",
+    "prepublishOnly": "napi prepublish -t npm && node scripts/verify-binaries.js",
     "test": "vitest run",
     "test:watch": "vitest",
     "universal": "napi universal",
@@ -46,5 +55,12 @@
     "lint:fix": "biome check --fix --unsafe",
     "biome": "biome"
   },
-  "packageManager": "pnpm@8.15.4"
+  "packageManager": "pnpm@8.15.4",
+  "optionalDependencies": {
+    "electron-pan-clip-darwin-x64": "0.0.6",
+    "electron-pan-clip-darwin-arm64": "0.0.6",
+    "electron-pan-clip-win32-x64-msvc": "0.0.6",
+    "electron-pan-clip-linux-x64-gnu": "0.0.6",
+    "electron-pan-clip-linux-arm64-gnu": "0.0.6"
+  }
 }
