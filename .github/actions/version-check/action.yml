@@ -29,7 +29,7 @@ runs:
       id: version
       uses: EndBug/version-check@v2
       with:
-        static-checking: ${{ inputs.remote-file-url == '' && 'localIsNew' || '' }}
+        static-checking: ${{ inputs.remote-file-url != '' && 'localIsNew' || '' }}
         file-url: ${{ inputs.remote-file-url }}
         file-name: ${{ inputs.package-json-path }}
     
