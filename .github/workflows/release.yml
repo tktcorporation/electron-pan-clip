@@ -156,7 +156,7 @@ jobs:
               sudo dpkg --add-architecture arm64
               sudo apt-get update
               # X11ライブラリをインストール
-              sudo apt-get install -y libx11-dev libxext-dev libxrender-dev libxtst-dev libxinerama-dev
+              # sudo apt-get install -y libx11-dev libxext-dev libxrender-dev libxtst-dev libxinerama-dev
               rustup target add aarch64-unknown-linux-gnu
           - name: macos-x64
             os: macos-latest
