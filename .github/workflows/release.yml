@@ -187,6 +187,7 @@ jobs:
         uses: ./.github/actions/node-setup
         with:
           node-version: ''
+          package-path: '.'
           
       - name: Rust設定
         uses: ./.github/actions/setup-rust
@@ -198,6 +199,11 @@ jobs:
         if: matrix.setup-script != ''
         shell: bash
         run: ${{ matrix.setup-script }}
+      
+      # napi CLIのインストール
+      - name: napi CLIインストール
+        shell: bash
+        run: npm install -g @napi-rs/cli
       
       # 特定のターゲット向けにビルド
       - name: バイナリビルド
@@ -261,12 +267,10 @@ jobs:
       
       - name: Node.js設定
         uses: ./.github/actions/node-setup
-        with:
-          node-version: ''
       
       # ビルド成果物をダウンロード
       - name: 成果物をダウンロード
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           path: artifacts
       
@@ -277,29 +281,19 @@ jobs:
           mkdir -p npm/linux-x64-gnu npm/linux-arm64-gnu npm/darwin-x64 npm/darwin-arm64 npm/win32-x64-msvc
           
           # Linux x64
-          if [ -f artifacts/binaries-linux-x64/electron-pan-clip.linux-x64-gnu.node ]; then
-            cp artifacts/binaries-linux-x64/electron-pan-clip.linux-x64-gnu.node npm/linux-x64-gnu/
-          fi
+          find artifacts/binaries-linux-x64 -name "electron-pan-clip.linux-x64-gnu.node" -exec cp {} npm/linux-x64-gnu/ \;
           
           # Linux ARM64
-          if [ -f artifacts/binaries-linux-arm64/electron-pan-clip.linux-arm64-gnu.node ]; then
-            cp artifacts/binaries-linux-arm64/electron-pan-clip.linux-arm64-gnu.node npm/linux-arm64-gnu/
-          fi
+          find artifacts/binaries-linux-arm64 -name "electron-pan-clip.linux-arm64-gnu.node" -exec cp {} npm/linux-arm64-gnu/ \;
           
           # macOS x64
-          if [ -f artifacts/binaries-macos-x64/electron-pan-clip.darwin-x64.node ]; then
-            cp artifacts/binaries-macos-x64/electron-pan-clip.darwin-x64.node npm/darwin-x64/
-          fi
+          find artifacts/binaries-macos-x64 -name "electron-pan-clip.darwin-x64.node" -exec cp {} npm/darwin-x64/ \;
           
           # macOS ARM64
-          if [ -f artifacts/binaries-macos-arm64/electron-pan-clip.darwin-arm64.node ]; then
-            cp artifacts/binaries-macos-arm64/electron-pan-clip.darwin-arm64.node npm/darwin-arm64/
-          fi
+          find artifacts/binaries-macos-arm64 -name "electron-pan-clip.darwin-arm64.node" -exec cp {} npm/darwin-arm64/ \;
           
           # Windows x64
-          if [ -f artifacts/binaries-windows-x64/electron-pan-clip.win32-x64-msvc.node ]; then
-            cp artifacts/binaries-windows-x64/electron-pan-clip.win32-x64-msvc.node npm/win32-x64-msvc/
-          fi
+          find artifacts/binaries-windows-x64 -name "electron-pan-clip.win32-x64-msvc.node" -exec cp {} npm/win32-x64-msvc/ \;
           
           # 各プラットフォーム用のpackage.jsonを作成
           for dir in npm/*; do
@@ -346,7 +340,9 @@ jobs:
       
       # npmへパブリッシュ
       - name: npmへパブリッシュ
-        run: npm publish
+        run: |
+          npm config set provenance true
+          npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
   
