@@ -21,7 +21,9 @@
     "vscode": {
       "extensions": [
         "mhutchie.git-graph",
-        "WakaTime.vscode-wakatime"
+        "WakaTime.vscode-wakatime",
+        "GitHub.vscode-github-actions",
+        "rust-lang.rust-analyzer"
       ],
 			"files.watcherExclude": {
 				"**/.git/*/**": true,

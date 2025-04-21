@@ -10,14 +10,6 @@ inputs:
     description: 'Lintを実行するコマンド'
     required: false
     default: 'nr ci'
-  format-command:
-    description: 'フォーマットをチェックするコマンド'
-    required: false
-    default: 'nr format:check'
-  typecheck-command:
-    description: '型チェックを実行するコマンド'
-    required: false
-    default: 'nr check:types'
   working-directory:
     description: '作業ディレクトリ'
     required: false
@@ -46,22 +38,12 @@ runs:
       shell: bash
       working-directory: ${{ inputs.working-directory }}
       run: nci
-    
+
     - name: Lint
       shell: bash
       working-directory: ${{ inputs.working-directory }}
       run: ${{ inputs.lint-command }}
-    
-    - name: Check Format
-      shell: bash
-      working-directory: ${{ inputs.working-directory }}
-      run: ${{ inputs.format-command }}
-    
-    - name: Type Check
-      shell: bash
-      working-directory: ${{ inputs.working-directory }}
-      run: ${{ inputs.typecheck-command }}
-    
+
     - name: Check for uncommitted changes
       if: inputs.check-uncommitted == 'true'
       shell: bash
