@@ -1,13 +1,18 @@
 use std::ffi::OsString;
 use std::io;
 use std::iter::once;
-use std::os::windows::ffi::OsStringExt;
+use std::os::windows::ffi::OsStrExt;
 use std::ptr;
 
 use windows::Win32::Foundation::*;
 use windows::Win32::System::DataExchange::*;
 use windows::Win32::System::Memory::*;
+use windows::Win32::UI::Shell::DROPFILES;
 
+// クリップボードフォーマット定数
+const CF_HDROP: u32 = 15;
+
+#[allow(dead_code)]
 /// WindowsのCF_HDROP形式でファイルをクリップボードにコピーする
 pub fn copy_files_to_clipboard(paths: &[String]) -> Result<(), io::Error> {
   // ファイルパスをワイド文字列に変換して、必要なサイズを計算
@@ -26,7 +31,7 @@ pub fn copy_files_to_clipboard(paths: &[String]) -> Result<(), io::Error> {
 
   unsafe {
     // グローバルメモリを確保
-    let h_global = GlobalAlloc(GMEM_MOVEABLE | GMEM_ZEROINIT, total_size);
+    let h_global = GlobalAlloc(GMEM_MOVEABLE | GMEM_ZEROINIT, total_size).unwrap();
     if h_global.is_invalid() {
       return Err(io::Error::last_os_error());
     }
@@ -53,20 +58,20 @@ pub fn copy_files_to_clipboard(paths: &[String]) -> Result<(), io::Error> {
     *dest_ptr = 0;
 
     // メモリをアンロック
-    GlobalUnlock(h_global);
+    GlobalUnlock(h_global).ok();
 
     // クリップボードを開く
-    if OpenClipboard(HWND(0)).0 == 0 {
+    if OpenClipboard(HWND(0)).is_err() {
       let _ = GlobalFree(h_global);
       return Err(io::Error::last_os_error());
     }
 
     // クリップボードをクリアしてデータをセット
-    EmptyClipboard();
-    let h_result = SetClipboardData(CF_HDROP, h_global);
-    CloseClipboard();
+    EmptyClipboard().ok();
+    let h_result = SetClipboardData(CF_HDROP, HANDLE(h_global.0 as isize));
+    CloseClipboard().ok();
 
-    if h_result.is_invalid() {
+    if h_result.is_err() {
       let _ = GlobalFree(h_global);
       return Err(io::Error::last_os_error());
     }
