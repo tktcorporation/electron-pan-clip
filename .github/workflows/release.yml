@@ -56,6 +56,7 @@ jobs:
         with:
           static-checking: localIsNew
           file-name: package.json
+          file-url: https://raw.githubusercontent.com/${{ github.repository }}/${{ github.event.before }}/package.json
       
       # バージョンタイプからバージョンを計算（手動実行時）
       - name: バージョンタイプからバージョン計算
