@@ -25,7 +25,7 @@ inputs:
   build-command:
     description: 'ビルドコマンド'
     required: false
-    default: 'npm run build'
+    default: 'nr build'
   publish-command:
     description: 'パブリッシュコマンド'
     required: false
@@ -45,13 +45,18 @@ runs:
         node-version: ${{ inputs.node-version }}
         registry-url: ${{ inputs.registry-url }}
         package-path: ${{ inputs.package-path }}
-    
+
     - name: パッケージバージョン取得
       id: get-version
       shell: bash
       working-directory: ${{ inputs.package-path }}
       run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
-    
+
+    - name: Setup Rust
+      uses: ./github/actions/setup-rust
+      with:
+        toolchain: stable
+
     - name: ビルド
       shell: bash
       working-directory: ${{ inputs.package-path }}
