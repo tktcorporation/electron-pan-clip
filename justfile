@@ -131,4 +131,16 @@ doc:
 
 [windows]
 doc:
-  $Env:RUSTDOCFLAGS='-D warnings'; cargo doc --no-deps 
+  $Env:RUSTDOCFLAGS='-D warnings'; cargo doc --no-deps
+
+# Linuxの依存関係をインストール
+[unix]
+install-linux-deps:
+  @echo "📦 Linux依存関係をインストール中..."
+  sudo apt-get update
+  sudo apt-get install -y libx11-dev libxext-dev libxrender-dev libxtst-dev libxinerama-dev
+
+# Linuxの依存関係をインストール（何もしない、Windowsの場合）
+[windows]
+install-linux-deps:
+  @echo "📦 Windows環境では不要なため、何もしません" 

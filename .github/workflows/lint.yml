@@ -24,7 +24,7 @@ concurrency:
 
 jobs:
   lint-js:
-    name: ESLint & Prettier
+    name: Lint & Format
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
