@@ -63,12 +63,5 @@
     "lint:fix": "biome check --fix --unsafe",
     "biome": "biome"
   },
-  "packageManager": "pnpm@8.15.4",
-  "optionalDependencies": {
-    "electron-pan-clip-win32-x64-msvc": "0.0.6",
-    "electron-pan-clip-darwin-x64": "0.0.6",
-    "electron-pan-clip-linux-x64-gnu": "0.0.6",
-    "electron-pan-clip-linux-arm64-gnu": "0.0.6",
-    "electron-pan-clip-darwin-arm64": "0.0.6"
-  }
+  "packageManager": "pnpm@8.15.4"
 }
