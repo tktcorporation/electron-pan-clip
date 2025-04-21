@@ -152,6 +152,10 @@ jobs:
             setup-script: |
               sudo apt-get update
               sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libc6-dev-arm64-cross
+              # マルチアーキテクチャサポートを追加
+              sudo dpkg --add-architecture arm64
+              sudo apt-get update
+              # X11ライブラリをインストール
               sudo apt-get install -y libx11-dev:arm64 libxext-dev:arm64 libxtst-dev:arm64
               rustup target add aarch64-unknown-linux-gnu
           - name: macos-x64
