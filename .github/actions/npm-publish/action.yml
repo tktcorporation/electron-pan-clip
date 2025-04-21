@@ -52,16 +52,16 @@ runs:
       working-directory: ${{ inputs.package-path }}
       run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
     
+    - name: ビルド
+      shell: bash
+      working-directory: ${{ inputs.package-path }}
+      run: ${{ inputs.build-command }}
+    
     - name: テスト実行
       if: inputs.run-tests == 'true'
       shell: bash
       working-directory: ${{ inputs.package-path }}
       run: npm test
-    
-    - name: ビルド
-      shell: bash
-      working-directory: ${{ inputs.package-path }}
-      run: ${{ inputs.build-command }}
     
     - name: パブリッシュ
       shell: bash
