@@ -1,4 +1,12 @@
 # Changelog
+## [0.0.10] - 2025-04-21
+
+### Bug Fixes
+
+
+
+- **(ci)** まずはci通したい ([7e7f834](https://github.com/tktcorporation/electron-pan-clip/commit/7e7f834b6b4c55eb26924b8e49bb6150151fd1e2))
+
 ## [0.0.7] - 2025-04-21
 
 ### Miscellaneous Tasks
