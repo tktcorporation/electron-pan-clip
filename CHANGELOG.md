@@ -1,4 +1,18 @@
 # Changelog
+## [0.0.7] - 2025-04-21
+
+### Miscellaneous Tasks
+
+
+
+- Chore(ci) :package.jsonから不要なoptionalDependenciesを削除 ([21eadbf](https://github.com/tktcorporation/electron-pan-clip/commit/21eadbfdcc8819f574e20259b66e3ab49cc9d9cf))
+
+### Wip
+
+
+
+- クロスビルドを oxc とか参考にやりたい ([86c0bc1](https://github.com/tktcorporation/electron-pan-clip/commit/86c0bc14960fe96c9d2a74d436f8fdf6f0f971df))
+
 ## [0.0.1] - 2025-04-21
 
 ### Bug Fixes
