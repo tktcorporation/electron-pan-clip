@@ -3,6 +3,10 @@
   "version": "0.0.6",
   "main": "index.js",
   "types": "index.d.ts",
+  "files": [
+    "index.d.ts",
+    "index.js"
+  ],
   "napi": {
     "name": "electron-pan-clip",
     "triples": {
@@ -15,6 +19,10 @@
         "x86_64-unknown-linux-gnu"
       ]
     }
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
   },
   "license": "MIT",
   "devDependencies": {
@@ -57,10 +65,10 @@
   },
   "packageManager": "pnpm@8.15.4",
   "optionalDependencies": {
-    "electron-pan-clip-darwin-x64": "0.0.6",
-    "electron-pan-clip-darwin-arm64": "0.0.6",
     "electron-pan-clip-win32-x64-msvc": "0.0.6",
+    "electron-pan-clip-darwin-x64": "0.0.6",
     "electron-pan-clip-linux-x64-gnu": "0.0.6",
-    "electron-pan-clip-linux-arm64-gnu": "0.0.6"
+    "electron-pan-clip-linux-arm64-gnu": "0.0.6",
+    "electron-pan-clip-darwin-arm64": "0.0.6"
   }
 }
