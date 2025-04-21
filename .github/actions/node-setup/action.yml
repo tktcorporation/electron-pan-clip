@@ -1,0 +1,36 @@
+name: 'Node.js設定'
+description: 'Node.jsのセットアップと依存関係のインストール'
+
+inputs:
+  node-version:
+    description: 'Node.jsのバージョン (空の場合は.node-versionを使用)'
+    required: false
+    default: ''
+  registry-url:
+    description: 'npmレジストリのURL'
+    required: false
+    default: 'https://registry.npmjs.org'
+  package-path:
+    description: 'パッケージのパス'
+    required: false
+    default: '.'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version-file: ${{ inputs.node-version == '' && '.node-version' || '' }}
+        node-version: ${{ inputs.node-version != '' && inputs.node-version || '' }}
+        registry-url: ${{ inputs.registry-url }}
+    
+    - name: add antfu/ni
+      shell: bash
+      run: |
+        npm i -g @antfu/ni
+
+    - name: 依存関係インストール
+      shell: bash
+      working-directory: ${{ inputs.package-path }}
+      run: nci

@@ -1,0 +1,71 @@
+name: 'npmパブリッシュ'
+description: 'npmパッケージをビルドしてパブリッシュする'
+
+inputs:
+  node-version:
+    description: 'Node.jsのバージョン (空の場合は.node-versionを使用)'
+    required: false
+    default: ''
+  registry-url:
+    description: 'npmレジストリのURL'
+    required: false
+    default: 'https://registry.npmjs.org'
+  package-path:
+    description: 'パッケージのパス'
+    required: false
+    default: '.'
+  token-name:
+    description: 'npm認証トークンの環境変数名'
+    required: false
+    default: 'NPM_TOKEN'
+  run-tests:
+    description: 'テストを実行するか'
+    required: false
+    default: 'true'
+  build-command:
+    description: 'ビルドコマンド'
+    required: false
+    default: 'npm run build'
+  publish-command:
+    description: 'パブリッシュコマンド'
+    required: false
+    default: 'npm publish'
+
+outputs:
+  published-version:
+    description: 'パブリッシュされたバージョン'
+    value: ${{ steps.get-version.outputs.version }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Node.js設定
+      uses: ./.github/actions/node-setup
+      with:
+        node-version: ${{ inputs.node-version }}
+        registry-url: ${{ inputs.registry-url }}
+        package-path: ${{ inputs.package-path }}
+    
+    - name: パッケージバージョン取得
+      id: get-version
+      shell: bash
+      working-directory: ${{ inputs.package-path }}
+      run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+    
+    - name: テスト実行
+      if: inputs.run-tests == 'true'
+      shell: bash
+      working-directory: ${{ inputs.package-path }}
+      run: npm test
+    
+    - name: ビルド
+      shell: bash
+      working-directory: ${{ inputs.package-path }}
+      run: ${{ inputs.build-command }}
+    
+    - name: パブリッシュ
+      shell: bash
+      working-directory: ${{ inputs.package-path }}
+      run: ${{ inputs.publish-command }}
+      env:
+        NODE_AUTH_TOKEN: ${{ env[inputs.token-name] }} 

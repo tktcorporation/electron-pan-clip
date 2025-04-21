@@ -1,0 +1,100 @@
+name: Lint
+
+permissions: {}
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [opened, synchronize]
+    paths-ignore:
+      - "**/*.md"
+      - "**/*.yml"
+      - "!.github/workflows/lint.yml"
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - "**/*.md"
+      - "**/*.yml"
+      - "!.github/workflows/lint.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.ref_name != 'main' }}
+
+jobs:
+  lint-js:
+    name: JS Lint & Format
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          toolchain: stable
+          components: clippy, rustfmt
+
+      - name: Run JavaScript lints
+        uses: ./.github/actions/lint-js
+
+  lint-rust:
+    name: Clippy & Rustfmt
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        
+      - name: Check Cargo.toml exists
+        id: check_cargo
+        continue-on-error: true
+        run: |
+          if [ -f "Cargo.toml" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Run Rust lints
+        if: ${{ steps.check_cargo.outputs.exists == 'true' }}
+        uses: ./.github/actions/lint-rust
+
+  spell-check:
+    name: Typos Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        
+      - name: Run typos check
+        uses: crate-ci/typos@v1.16.0
+        with:
+          files: .
+          config: .github/typos.toml
+
+  code-quality:
+    name: コード品質チェック
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        
+      - name: Node.js設定
+        uses: ./.github/actions/node-setup
+        with:
+          node-version: ''
+          package-path: '.'
+          
+      - name: Check file sizes
+        run: |
+          find . -path "./node_modules" -prune -o -path "./.git" -prune -o -type f -name "*.js" -size +100k -exec ls -lh {} \; | sort -k5,5nr
+          
+      - name: Check max line length
+        run: |
+          find . -path "./node_modules" -prune -o -path "./.git" -prune -o -type f -name "*.js" -o -name "*.ts" -exec grep -l '^.\{120,\}' {} \; | xargs -r echo "これらのファイルには120文字を超える行があります："
+        
+      - name: パッケージ依存関係の分析
+        run: npm ls --all || true 

@@ -1,0 +1,55 @@
+name: 'JavaScriptコードのLint'
+description: 'Lint、Formatチェック'
+
+inputs:
+  node-version:
+    description: 'Node.jsのバージョン (空の場合は.node-versionを使用)'
+    required: false
+    default: ''
+  lint-command:
+    description: 'Lintを実行するコマンド'
+    required: false
+    default: 'nr ci'
+  working-directory:
+    description: '作業ディレクトリ'
+    required: false
+    default: '.'
+  check-uncommitted:
+    description: '未コミットの変更をチェックするかどうか'
+    required: false
+    default: 'true'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Node.js設定
+      uses: ./.github/actions/node-setup
+      with:
+        node-version: ${{ inputs.node-version }}
+        registry-url: 'https://registry.npmjs.org'
+        package-path: ${{ inputs.working-directory }}
+    
+    - name: add antfu/ni
+      shell: bash
+      run: |
+        npm i -g @antfu/ni
+    
+    - name: Install dependencies
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: nci
+
+    - name: Lint
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.lint-command }}
+
+    - name: Check for uncommitted changes
+      if: inputs.check-uncommitted == 'true'
+      shell: bash
+      run: |
+        if [[ -n $(git status --porcelain) ]]; then
+          echo "未コミットの変更があります。まず以下の変更をコミットしてください："
+          git status --porcelain
+          exit 1
+        fi 

@@ -1,0 +1,50 @@
+name: 'Rustセットアップ'
+description: 'Rustツールチェーンとその依存関係のセットアップ'
+
+inputs:
+  toolchain:
+    description: 'Rustのツールチェーン'
+    required: false
+    default: 'stable'
+  components:
+    description: 'インストールするコンポーネント'
+    required: false
+    default: 'rustfmt, clippy'
+  cache-key:
+    description: 'キャッシュのキー'
+    required: false
+    default: 'rust-setup'
+  install-dependencies:
+    description: 'Linux依存関係をインストールするかどうか'
+    required: false
+    default: 'true'
+  just-version:
+    description: 'Justのバージョン'
+    required: false
+    default: '1.23.0'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Justインストール
+      uses: extractions/setup-just@v3
+      with:
+        just-version: ${{ inputs.just-version }}
+
+    - name: Setup Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: ${{ inputs.toolchain }}
+        override: true
+        components: ${{ inputs.components }}
+        
+    - name: Linux依存関係をインストール
+      if: runner.os == 'Linux' && inputs.install-dependencies == 'true'
+      shell: bash
+      run: just install-linux-deps
+
+    - name: Cache Rust dependencies
+      uses: Swatinem/rust-cache@v2
+      with:
+        key: ${{ inputs.cache-key }} 

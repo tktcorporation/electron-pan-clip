@@ -1,0 +1,50 @@
+{
+  "name": "electron-pan-clip",
+  "version": "0.0.0",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "napi": {
+    "name": "electron-pan-clip",
+    "triples": {}
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@biomejs/biome": "^1.5.3",
+    "@napi-rs/cli": "^2.18.4",
+    "@types/node": "^22.14.1",
+    "jsdoc": "^4.0.4",
+    "minami": "^1.2.3",
+    "taffydb": "^2.7.3",
+    "typescript": "^5.0.0",
+    "vitest": "^3.1.1"
+  },
+  "engines": {
+    "node": ">= 22"
+  },
+  "scripts": {
+    "artifacts": "napi artifacts",
+    "build": "napi build --platform --release",
+    "build:debug": "napi build --platform",
+    "prepublishOnly": "napi prepublish -t npm",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "universal": "napi universal",
+    "version": "napi version",
+    "docs": "jsdoc -c jsdoc.json",
+    "check": "npm run check:format && npm run check:lint",
+    "check:format": "npm run check:format:rust && npm run check:format:ts",
+    "check:lint": "npm run check:lint:rust && npm run check:lint:ts",
+    "check:format:rust": "cargo fmt --all -- --check",
+    "check:format:ts": "biome check",
+    "check:lint:rust": "cargo clippy -- -D warnings",
+    "check:lint:ts": "biome check",
+    "check:types": "tsc --noEmit",
+    "check:oxlint": "oxlint",
+    "pre-push": "npm run check",
+    "ci": "cargo check && cargo clippy --all-targets -- -D warnings && npm run check:types && npm run check:lint:ts",
+    "fmt:ts": "biome format --write",
+    "lint:fix": "biome check --fix --unsafe",
+    "biome": "biome"
+  },
+  "packageManager": "pnpm@8.15.4"
+}

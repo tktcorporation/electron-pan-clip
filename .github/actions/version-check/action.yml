@@ -1,0 +1,39 @@
+name: 'バージョン検出'
+description: 'package.jsonのバージョン変更を検出してチェックする'
+
+inputs:
+  package-json-path:
+    description: 'package.jsonのパス'
+    required: false
+    default: 'package.json'
+  remote-file-url:
+    description: '比較対象の外部package.jsonのURL (例: https://unpkg.com/package@latest/package.json)'
+    required: false
+    default: ''
+
+outputs:
+  changed:
+    description: 'バージョンが変更されたかどうか'
+    value: ${{ steps.version.outputs.changed }}
+  version:
+    description: '現在のバージョン'
+    value: ${{ steps.version.outputs.version }}
+  previous_version:
+    description: '前のバージョン'
+    value: ${{ steps.version.outputs.previous_version }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: バージョン変更チェック
+      id: version
+      uses: EndBug/version-check@v2
+      with:
+        static-checking: ${{ inputs.remote-file-url == '' && 'localIsNew' || '' }}
+        file-url: ${{ inputs.remote-file-url }}
+        file-name: ${{ inputs.package-json-path }}
+    
+    - name: 変更が検出された場合
+      if: steps.version.outputs.changed == 'true'
+      shell: bash
+      run: echo "バージョン変更を検出しました！${{ steps.version.outputs.previous_version }} → ${{ steps.version.outputs.version }}" 

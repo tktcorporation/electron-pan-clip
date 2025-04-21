@@ -1,0 +1,16 @@
+{
+  "source": {
+    "include": ["index.js", "index.d.ts", "examples"],
+    "includePattern": ".+\\.js(doc|x)?$"
+  },
+  "opts": {
+    "destination": "./docs/api",
+    "recurse": true,
+    "template": "node_modules/minami"
+  },
+  "plugins": ["plugins/markdown"],
+  "templates": {
+    "cleverLinks": false,
+    "monospaceLinks": false
+  }
+} 

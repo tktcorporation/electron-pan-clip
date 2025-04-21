@@ -1,0 +1,36 @@
+{
+  "name": "Electron-Pan-Clip Dev",
+  // Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
+  "image": "mcr.microsoft.com/devcontainers/rust:latest",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "22"
+    },
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    // add `just` for running scripts
+    "ghcr.io/guiyomh/features/just:0": {
+      "version": "latest"
+    },
+    // add `cargo-binstall` for installing other tools.
+    "ghcr.io/lee-orr/rusty-dev-containers/cargo-binstall:0": {
+      "version": "latest"
+    }
+  },
+  "forwardPorts": [],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "mhutchie.git-graph",
+        "WakaTime.vscode-wakatime",
+        "GitHub.vscode-github-actions",
+        "rust-lang.rust-analyzer"
+      ],
+			"files.watcherExclude": {
+				"**/.git/*/**": true,
+				"**/node_modules/*/**": true
+			}
+		}
+	},
+  "runArgs": ["--env-file", ".devcontainer/.env"],
+  "postCreateCommand": "just init"
+} 

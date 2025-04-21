@@ -1,0 +1,62 @@
+name: 'リリースノート抽出'
+description: 'CHANGELOGから特定バージョンのリリースノートを抽出する'
+
+inputs:
+  version:
+    description: '抽出対象のバージョン番号'
+    required: true
+  changelog-path:
+    description: 'CHANGELOGのパス'
+    required: false
+    default: 'CHANGELOG.md'
+  include-version-header:
+    description: 'バージョンヘッダーを含めるか'
+    required: false
+    default: 'true'
+
+outputs:
+  notes:
+    description: '抽出されたリリースノート'
+    value: ${{ steps.extract.outputs.notes }}
+  version:
+    description: '処理されたバージョン'
+    value: ${{ steps.extract.outputs.version }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: リリースノート抽出
+      id: extract
+      shell: bash
+      run: |
+        # バージョン情報の整形
+        VERSION="${{ inputs.version }}"
+        VERSION_CLEAN="${VERSION#v}"
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        
+        # バージョンヘッダーのパターンを作成
+        if [[ "${{ inputs.include-version-header }}" == "true" ]]; then
+          PATTERN="/^## \[$VERSION_CLEAN\]/"
+        else
+          PATTERN="/^## \[$VERSION_CLEAN\]/{ next; }"
+        fi
+        
+        # git-cliff形式のCHANGELOGからリリースノートを抽出
+        NOTES=$(awk -v ver="$VERSION_CLEAN" "
+          $PATTERN {
+            in_section = 1;
+            if (\"${{ inputs.include-version-header }}\" == \"true\") {
+              print;
+            }
+            next;
+          }
+          /^## \[/ {
+            if (in_section) exit;
+          }
+          in_section { print }
+        " ${{ inputs.changelog-path }} || echo "リリースノートが見つかりません")
+        
+        # GitHub出力に設定
+        echo "notes<<EOF" >> $GITHUB_OUTPUT
+        echo "$NOTES" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT 

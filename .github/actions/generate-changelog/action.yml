@@ -1,0 +1,66 @@
+name: 'CHANGELOG生成'
+description: 'git-cliffを使用してCHANGELOGを生成する'
+
+inputs:
+  version:
+    description: '生成するバージョン番号'
+    required: true
+  config-path:
+    description: 'git-cliffの設定ファイルパス'
+    required: false
+    default: 'cliff.toml'
+  output-path:
+    description: '出力先のパス'
+    required: false
+    default: 'CHANGELOG.md'
+  commit-changes:
+    description: '変更をコミットするかどうか'
+    required: false
+    default: 'false'
+  git-user-name:
+    description: 'Gitのユーザー名'
+    required: false
+    default: 'GitHub Action'
+  git-user-email:
+    description: 'Gitのメールアドレス'
+    required: false
+    default: 'action@github.com'
+
+outputs:
+  changelog-content:
+    description: '生成されたCHANGELOGの内容'
+    value: ${{ steps.extract.outputs.content }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: git-cliffインストール
+      uses: taiki-e/install-action@v2
+      with:
+        tool: git-cliff@2.8.0
+    
+    - name: CHANGELOG生成
+      id: generate
+      shell: bash
+      run: |
+        git-cliff --config ${{ inputs.config-path }} --tag v${{ inputs.version }} > ${{ inputs.output-path }}
+        echo "CHANGELOGを生成しました: ${{ inputs.output-path }}"
+    
+    - name: 変更の抽出
+      id: extract
+      shell: bash
+      run: |
+        CONTENT=$(cat ${{ inputs.output-path }})
+        echo "content<<EOF" >> $GITHUB_OUTPUT
+        echo "$CONTENT" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+    
+    - name: 変更をコミット
+      if: inputs.commit-changes == 'true'
+      shell: bash
+      run: |
+        git config --local user.email "${{ inputs.git-user-email }}"
+        git config --local user.name "${{ inputs.git-user-name }}"
+        git add ${{ inputs.output-path }}
+        git commit -m "chore: Update CHANGELOG for v${{ inputs.version }}"
+        git push 
