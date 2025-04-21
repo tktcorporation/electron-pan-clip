@@ -208,7 +208,7 @@ jobs:
       
       # ビルド成果物をアップロード
       - name: 成果物をアップロード
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: binaries-${{ matrix.name }}
           path: |
