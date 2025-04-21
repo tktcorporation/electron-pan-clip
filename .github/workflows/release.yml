@@ -212,29 +212,3 @@ jobs:
         with:
           package-name: 'electron-pan-clip'
           version: ${{ steps.get-version.outputs.version }}
-  
-  # 依存パッケージを更新
-  update-dependencies:
-    name: 依存パッケージ更新
-    needs: [check-version, smoke-test]
-    if: (needs.check-version.outputs.should_release == 'true' || github.event_name == 'release') && github.repository == 'tktcorporation/electron-pan-clip'
-    runs-on: ubuntu-latest
-    steps:
-      - name: バージョン取得
-        id: get-version
-        run: |
-          if [[ "${{ github.event_name }}" == "release" ]]; then
-            VERSION="${{ github.event.release.tag_name }}"
-            VERSION="${VERSION#v}"
-          else
-            VERSION="${{ needs.check-version.outputs.version }}"
-          fi
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-      
-      - name: 例レポジトリを更新
-        uses: peter-evans/repository-dispatch@v2
-        with:
-          token: ${{ secrets.REPO_ACCESS_TOKEN || github.token }}
-          repository: tktcorporation/electron-pan-clip-examples
-          event-type: update-dependency
-          client-payload: '{"version": "${{ steps.get-version.outputs.version }}"}' 
