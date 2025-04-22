@@ -9,7 +9,7 @@ inputs:
   components:
     description: 'インストールするコンポーネント'
     required: false
-    default: 'rustfmt clippy'
+    default: 'rustfmt, clippy'
   cache-key:
     description: 'キャッシュのキー'
     required: false
@@ -18,10 +18,6 @@ inputs:
     description: 'Linux依存関係をインストールするかどうか'
     required: false
     default: 'true'
-  just-version:
-    description: 'Justのバージョン'
-    required: false
-    default: '1.23.0'
 
 runs:
   using: "composite"
@@ -30,27 +26,21 @@ runs:
     - name: 依存ツールインストール
       shell: bash
       run: |
-        apt-get update -y
-        apt-get install -y curl wget
+        sudo apt-get update -y
+        sudo apt-get install -y curl wget
 
     # justを直接インストール
     - name: Justインストール
-      shell: bash
-      run: |
-        curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to /usr/local/bin
+      uses: extractions/setup-just@v3
 
     # rustupを使用
     - name: Setup Rust
-      shell: bash
-      run: |
-        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain ${{ inputs.toolchain }}
-        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-        source "$HOME/.cargo/env"
-        components="${{ inputs.components }}"
-        # コンポーネントごとに個別にインストール
-        for component in $components; do
-          rustup component add $component
-        done
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: ${{ inputs.toolchain }}
+        override: true
+        components: ${{ inputs.components }}
         
     - name: Linux依存関係をインストール
       if: runner.os == 'Linux' && inputs.install-dependencies == 'true'
