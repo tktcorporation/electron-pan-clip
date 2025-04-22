@@ -4,8 +4,6 @@ on:
   # 手動実行用トリガー
   workflow_dispatch:
   push:
-    branches:
-      - main
 
 jobs:
   debug-setup:
