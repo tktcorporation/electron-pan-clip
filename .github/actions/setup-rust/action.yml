@@ -17,21 +17,29 @@ inputs:
   install-dependencies:
     description: 'Linux依存関係をインストールするかどうか'
     required: false
-    default: 'true'
+    default: 'false'
+  just-version:
+    description: 'Justのバージョン'
+    required: false
+    default: '1.23.0'
 
 runs:
   using: "composite"
   steps:
+    # 必要なツールをインストール
     - name: 依存ツールインストール
       shell: bash
       run: |
         sudo apt-get update -y
-        # 基本ツール + クロスビルド支援ツール
-        sudo apt-get install -y curl wget pkg-config zig
+        sudo apt-get install -y curl wget
 
+    # justを直接インストール
     - name: Justインストール
       uses: extractions/setup-just@v3
+      with:
+        just-version: ${{ inputs.just-version }}
 
+    # rustupを使用
     - name: Setup Rust
       uses: actions-rs/toolchain@v1
       with:
@@ -39,52 +47,17 @@ runs:
         toolchain: ${{ inputs.toolchain }}
         override: true
         components: ${{ inputs.components }}
-
+        
     - name: Linux依存関係をインストール
       if: runner.os == 'Linux' && inputs.install-dependencies == 'true'
       shell: bash
       run: |
-        echo "Installing dependencies for Linux"
-        # Azure ミラーを amd64 専用に制限して arm64 の 404 を回避
-        sudo sed -i -r \
-          -e "s|^deb ([^ ]*azure\.archive\.ubuntu\.com/ubuntu[^ ]*)|deb [arch=amd64] \1|" \
-          -e "s|^deb ([^ ]*packages\.microsoft\.com/repos/azure-cli[^ ]*)|deb [arch=amd64] \1|" \
-          /etc/apt/sources.list
+        # sudoを使わずに直接apt-getを実行
         sudo apt-get update -y
-
-        echo "Installing X11 dev libs for x86_64"
         sudo apt-get install -y libx11-dev libxext-dev libxrender-dev libxtst-dev libxinerama-dev libxss-dev
-
-        echo "Adding x86_64 Rust target"
-        rustup target add x86_64-unknown-linux-gnu
-
-        echo "Adding arm64 architecture and ports repository"
-        sudo dpkg --add-architecture arm64
-        cat <<EOF | sudo tee /etc/apt/sources.list.d/ubuntu-ports-arm64.list
-        deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy main restricted universe multiverse
-        deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-updates main restricted universe multiverse
-        deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-security main restricted universe multiverse
-        EOF
-
-        echo "Installing X11 dev libs for arm64"
-        sudo apt-get update
-        sudo apt-get install -y \
-          libx11-dev:arm64 \
-          libxext-dev:arm64 \
-          libxrender-dev:arm64 \
-          libxtst-dev:arm64 \
-          libxinerama-dev:arm64 \
-          libxss-dev:arm64
-
-        echo "Configuring pkg-config for cross-compilation"
-        echo "PKG_CONFIG_ALLOW_CROSS=1" >> $GITHUB_ENV
-        echo "PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig" >> $GITHUB_ENV
-
-        echo "Adding ARM64 Rust target"
-        rustup target add aarch64-unknown-linux-gnu
 
     # Swatinem/rust-cacheは一時的に無効化
     # - name: Cache Rust dependencies
     #   uses: Swatinem/rust-cache@v2
     #   with:
-    #     key: ${{ inputs.cache-key }}
+    #     key: ${{ inputs.cache-key }} 
