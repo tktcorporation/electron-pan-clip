@@ -7,14 +7,14 @@ on:
   pull_request:
     branches:
       - main
-    paths:
-      - 'src/**'
-      - 'native/**'
-      - 'npm/**'
-      - 'package.json'
-      - 'pnpm-lock.yaml'
-      - 'Cargo.toml'
-      - 'Cargo.lock'
+    # paths:
+    #   - 'src/**'
+    #   - 'native/**'
+    #   - 'npm/**'
+    #   - 'package.json'
+    #   - 'pnpm-lock.yaml'
+    #   - 'Cargo.toml'
+    #   - 'Cargo.lock'
 
 jobs:
   # 各プラットフォーム向けのバイナリをビルド
