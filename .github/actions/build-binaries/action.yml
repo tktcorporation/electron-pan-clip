@@ -79,5 +79,6 @@ runs:
         name: ${{ inputs.artifact-name-prefix }}-${{ inputs.name }}
         path: |
           *.node
+          electron-pan-clip.*.node
           npm/*/electron-pan-clip.*.node
         if-no-files-found: error 
