@@ -26,7 +26,8 @@ runs:
       shell: bash
       run: |
         sudo apt-get update -y
-        sudo apt-get install -y curl wget
+        # 基本ツール + クロスビルド支援ツール
+        sudo apt-get install -y curl wget pkg-config zig
 
     - name: Justインストール
       uses: extractions/setup-just@v3
@@ -44,13 +45,14 @@ runs:
       shell: bash
       run: |
         echo "Installing dependencies for Linux"
-        # Azure ミラーを amd64 専用に制限して arm64 の 404 を回避（codename に関係なく適用）
+        # Azure ミラーを amd64 専用に制限して arm64 の 404 を回避
         sudo sed -i -r \
           -e "s|^deb ([^ ]*azure\.archive\.ubuntu\.com/ubuntu[^ ]*)|deb [arch=amd64] \1|" \
           -e "s|^deb ([^ ]*packages\.microsoft\.com/repos/azure-cli[^ ]*)|deb [arch=amd64] \1|" \
           /etc/apt/sources.list
         sudo apt-get update -y
-        echo "Installing for x86_64"
+
+        echo "Installing X11 dev libs for x86_64"
         sudo apt-get install -y libx11-dev libxext-dev libxrender-dev libxtst-dev libxinerama-dev libxss-dev
 
         echo "Adding x86_64 Rust target"
@@ -64,7 +66,7 @@ runs:
         deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-security main restricted universe multiverse
         EOF
 
-        echo "Updating and installing for arm64"
+        echo "Installing X11 dev libs for arm64"
         sudo apt-get update
         sudo apt-get install -y \
           libx11-dev:arm64 \
@@ -73,6 +75,10 @@ runs:
           libxtst-dev:arm64 \
           libxinerama-dev:arm64 \
           libxss-dev:arm64
+
+        echo "Configuring pkg-config for cross-compilation"
+        echo "PKG_CONFIG_ALLOW_CROSS=1" >> $GITHUB_ENV
+        echo "PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig" >> $GITHUB_ENV
 
         echo "Adding ARM64 Rust target"
         rustup target add aarch64-unknown-linux-gnu
