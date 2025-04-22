@@ -57,8 +57,8 @@ runs:
       shell: bash
       run: |
         # sudoを使わずに直接apt-getを実行
-        apt-get update -y
-        apt-get install -y libx11-dev libxext-dev libxrender-dev libxtst-dev libxinerama-dev libxss-dev
+        sudo apt-get update -y
+        sudo apt-get install -y libx11-dev libxext-dev libxrender-dev libxtst-dev libxinerama-dev libxss-dev
 
     # Swatinem/rust-cacheは一時的に無効化
     # - name: Cache Rust dependencies
