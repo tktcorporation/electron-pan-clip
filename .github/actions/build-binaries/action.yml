@@ -56,8 +56,20 @@ runs:
         set -ex
         napi build --platform --release --target ${{ inputs.target }}
         echo "ビルド後のファイル検索："
-        find . -name "*.node" | grep "${{ inputs.target }}" || echo "ターゲットに一致する.nodeファイルが見つかりません"
-        ls -la npm || echo "npmディレクトリが存在しません"
+        
+        # npmディレクトリとその中身を表示
+        echo "npmディレクトリの内容:"
+        ls -la npm
+        
+        # .nodeファイル検索（ターゲット文字列によるフィルタリングなし）
+        echo "全ての.nodeファイル:"
+        find . -name "*.node" || echo ".nodeファイルが見つかりません"
+        
+        # npmディレクトリ内の各ディレクトリの内容を表示
+        for dir in npm/*; do
+          echo "内容 $dir:"
+          ls -la $dir || echo "$dirは空またはアクセスできません"
+        done
     
     # ビルド成果物をアップロード
     - name: 成果物をアップロード
