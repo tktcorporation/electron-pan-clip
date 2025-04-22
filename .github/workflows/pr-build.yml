@@ -32,7 +32,17 @@ jobs:
           - name: linux-arm64
             os: ubuntu-22.04
             target: aarch64-unknown-linux-gnu
-            setup-script: "rustup target add aarch64-unknown-linux-gnu"
+            setup-script: |
+              echo "Updating package list..."
+              sudo apt-get update -y
+              echo "Adding arm64 architecture..."
+              sudo dpkg --add-architecture arm64
+              echo "Updating package list again..."
+              sudo apt-get update -y
+              echo "Installing for x11..."
+              sudo apt-get install libxss-dev -y
+              echo "Adding Rust target..."
+              rustup target add aarch64-unknown-linux-gnu
           - name: macos-x64
             os: macos-latest
             target: x86_64-apple-darwin
