@@ -1,0 +1,71 @@
+name: Act PR Build Check
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+
+env:
+  SKIP_SETUP: true
+
+jobs:
+  # シングルプラットフォーム向けのバイナリをビルド（ローカルテスト用）
+  build-single-platform:
+    name: バイナリビルドチェック (ローカル用)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      # Node.js設定
+      - name: Node.js設定
+        uses: ./.github/actions/node-setup
+        with:
+          node-version: ''
+          package-path: '.'
+      
+      # Rust設定
+      - name: Rust設定
+        uses: ./.github/actions/setup-rust
+        with:
+          toolchain: stable
+      
+      # 依存関係インストール - actでの実行時はsudoが使えないため条件分岐
+      - name: 依存関係インストール
+        run: |
+          echo "Linuxの依存関係をインストール中..."
+          if command -v sudo >/dev/null 2>&1; then
+            # 通常のCI環境での実行
+            sudo apt-get update -y
+            sudo apt-get install -y libx11-dev libxext-dev libxrender-dev libxtst-dev libxinerama-dev libxss-dev
+          else
+            # actでの実行環境（sudoがない）
+            apt-get update -y
+            apt-get install -y libx11-dev libxext-dev libxrender-dev libxtst-dev libxinerama-dev libxss-dev
+          fi
+
+      # napi CLIのインストール
+      - name: napi CLIインストール
+        run: npm install -g @napi-rs/cli
+      
+      # 現在のプラットフォーム向けにビルド
+      - name: バイナリビルド
+        run: |
+          napi build --platform --release
+          
+          # 現在のアーキテクチャを検出
+          ARCH=$(uname -m)
+          if [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
+            TARGET_DIR="linux-arm64-gnu"
+          else
+            TARGET_DIR="linux-x64-gnu"
+          fi
+          
+          echo "ターゲットディレクトリ: $TARGET_DIR"
+          mkdir -p npm/$TARGET_DIR
+          find . -name "*.node" | grep $TARGET_DIR
+          cp $(find . -name "*.node" | grep $TARGET_DIR | head -1) npm/$TARGET_DIR/ || echo "バイナリコピー失敗"
+      
+      # バイナリ検証
+      - name: バイナリ検証
+        run: node scripts/verify-binaries.js || echo "検証に失敗しましたが、ローカルテストのため続行します" 

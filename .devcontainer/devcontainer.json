@@ -1,11 +1,17 @@
 {
   "name": "Electron-Pan-Clip Dev",
   // Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
-  "image": "mcr.microsoft.com/devcontainers/rust:latest",
+  "image": "mcr.microsoft.com/devcontainers/rust:1-bookworm",
   "features": {
     "ghcr.io/devcontainers/features/node:1": {
       "version": "22"
     },
+    // add `docker-in-docker` for running docker commands
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+			"version": "latest",
+			"enableNonRootDocker": "true",
+			"moby": "true"
+		},
     "ghcr.io/devcontainers/features/github-cli:1": {},
     // add `just` for running scripts
     "ghcr.io/guiyomh/features/just:0": {
@@ -13,6 +19,10 @@
     },
     // add `cargo-binstall` for installing other tools.
     "ghcr.io/lee-orr/rusty-dev-containers/cargo-binstall:0": {
+      "version": "latest"
+    },
+    // add `act` for running github actions locally
+    "ghcr.io/dhoeric/features/act:1": {
       "version": "latest"
     }
   },
@@ -31,6 +41,8 @@
 			}
 		}
 	},
-  "runArgs": ["--env-file", ".devcontainer/.env"],
-  "postCreateCommand": "just init"
+  "runArgs": [
+    "--env-file", ".devcontainer/.env"
+  ],
+  "postCreateCommand": "sudo chown -R $USER:$GROUP $CARGO_HOME && just init"
 } 

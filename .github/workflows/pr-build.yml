@@ -96,23 +96,33 @@ jobs:
           mkdir -p npm/linux-x64-gnu npm/linux-arm64-gnu npm/darwin-x64 npm/darwin-arm64 npm/win32-x64-msvc
           
           # Linux x64
-          find artifacts/pr-binaries-linux-x64 -name "electron-pan-clip.linux-x64-gnu.node" -exec cp {} npm/linux-x64-gnu/ \;
+          find artifacts/pr-binaries-linux-x64 -name "electron-pan-clip.linux-x64-gnu.node" -exec cp {} npm/linux-x64-gnu/ \; || echo "Warning: linux-x64-gnu バイナリが見つかりませんでした"
           
           # Linux ARM64
-          find artifacts/pr-binaries-linux-arm64 -name "electron-pan-clip.linux-arm64-gnu.node" -exec cp {} npm/linux-arm64-gnu/ \;
+          find artifacts/pr-binaries-linux-arm64 -name "electron-pan-clip.linux-arm64-gnu.node" -exec cp {} npm/linux-arm64-gnu/ \; || echo "Warning: linux-arm64-gnu バイナリが見つかりませんでした"
           
           # macOS x64
-          find artifacts/pr-binaries-macos-x64 -name "electron-pan-clip.darwin-x64.node" -exec cp {} npm/darwin-x64/ \;
+          find artifacts/pr-binaries-macos-x64 -name "electron-pan-clip.darwin-x64.node" -exec cp {} npm/darwin-x64/ \; || echo "Warning: darwin-x64 バイナリが見つかりませんでした"
           
           # macOS ARM64
-          find artifacts/pr-binaries-macos-arm64 -name "electron-pan-clip.darwin-arm64.node" -exec cp {} npm/darwin-arm64/ \;
+          find artifacts/pr-binaries-macos-arm64 -name "electron-pan-clip.darwin-arm64.node" -exec cp {} npm/darwin-arm64/ \; || echo "Warning: darwin-arm64 バイナリが見つかりませんでした"
           
           # Windows x64
-          find artifacts/pr-binaries-windows-x64 -name "electron-pan-clip.win32-x64-msvc.node" -exec cp {} npm/win32-x64-msvc/ \;
+          find artifacts/pr-binaries-windows-x64 -name "electron-pan-clip.win32-x64-msvc.node" -exec cp {} npm/win32-x64-msvc/ \; || echo "Warning: win32-x64-msvc バイナリが見つかりませんでした"
           
           # 成果物の確認
           find npm -type f | sort
       
       # バイナリ検証
       - name: バイナリ検証
-        run: node scripts/verify-binaries.js 
+        run: |
+          FOUND_COUNT=$(find npm -type f -name "*.node" | wc -l)
+          echo "見つかったバイナリ数: $FOUND_COUNT"
+          if [ $FOUND_COUNT -eq 0 ]; then
+            echo "エラー: バイナリが1つも見つかりません！"
+            exit 1
+          fi
+          node scripts/verify-binaries.js || {
+            echo "警告: バイナリ検証で一部問題が見つかりました"
+            exit 1
+          } 
