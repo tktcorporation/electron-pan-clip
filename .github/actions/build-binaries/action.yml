@@ -53,8 +53,11 @@ runs:
     - name: バイナリビルド
       shell: bash
       run: |
+        set -ex
         napi build --platform --release --target ${{ inputs.target }}
-        find . -name "*.node" | grep "${{ inputs.target }}"
+        echo "ビルド後のファイル検索："
+        find . -name "*.node" | grep "${{ inputs.target }}" || echo "ターゲットに一致する.nodeファイルが見つかりません"
+        ls -la npm || echo "npmディレクトリが存在しません"
     
     # ビルド成果物をアップロード
     - name: 成果物をアップロード
