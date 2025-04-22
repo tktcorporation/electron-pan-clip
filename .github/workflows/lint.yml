@@ -11,8 +11,6 @@ on:
       - "**/*.yml"
       - "!.github/workflows/lint.yml"
   push:
-    branches:
-      - main
     paths-ignore:
       - "**/*.md"
       - "**/*.yml"
