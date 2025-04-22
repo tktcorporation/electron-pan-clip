@@ -41,30 +41,35 @@ runs:
         toolchain: ${{ inputs.toolchain }}
         override: true
         components: ${{ inputs.components }}
-        
+
+    # Linux依存関係をインストール
     - name: Linux依存関係をインストール
       if: runner.os == 'Linux' && inputs.install-dependencies == 'true'
       shell: bash
       run: |
         echo "Installing dependencies for Linux"
+        # Azure ミラーを amd64 専用に制限して arm64 の 404 を回避
+        sudo sed -i \
+          -e 's|^deb http://azure.archive.ubuntu.com/ubuntu|deb [arch=amd64] http://azure.archive.ubuntu.com/ubuntu|' \
+          -e 's|^deb http://azure.archive.ubuntu.com/ubuntu jammy-updates|deb [arch=amd64] http://azure.archive.ubuntu.com/ubuntu jammy-updates|' \
+          -e 's|^deb https://packages.microsoft.com/repos/azure-cli|deb [arch=amd64] https://packages.microsoft.com/repos/azure-cli|' \
+          /etc/apt/sources.list
         sudo apt-get update -y
         echo "Installing for x86_64"
         sudo apt-get install -y libx11-dev libxext-dev libxrender-dev libxtst-dev libxinerama-dev libxss-dev
 
-        echo "Installing for x86_64-linux-gnu"
-        rustup target add x86_64-linux-gnu
+        echo "Adding x86_64 Rust target"
+        rustup target add x86_64-unknown-linux-gnu
 
-        echo "Installing for arm64"
+        echo "Adding arm64 architecture and ports repository"
         sudo dpkg --add-architecture arm64
-
-        echo "Adding ports repository"
         cat <<EOF | sudo tee /etc/apt/sources.list.d/ubuntu-ports-arm64.list
         deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy main restricted universe multiverse
         deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-updates main restricted universe multiverse
         deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-security main restricted universe multiverse
         EOF
 
-        echo "Updating and installing arm64 packages"
+        echo "Updating and installing for arm64"
         sudo apt-get update
         sudo apt-get install -y \
           libx11-dev:arm64 \
@@ -74,11 +79,11 @@ runs:
           libxinerama-dev:arm64 \
           libxss-dev:arm64
 
-        echo "Installing for arm64-linux-gnu"
-        rustup target add arm64-linux-gnu
+        echo "Adding ARM64 Rust target"
+        rustup target add aarch64-unknown-linux-gnu
 
     # Swatinem/rust-cacheは一時的に無効化
     # - name: Cache Rust dependencies
     #   uses: Swatinem/rust-cache@v2
     #   with:
-    #     key: ${{ inputs.cache-key }} 
+    #     key: ${{ inputs.cache-key }}
