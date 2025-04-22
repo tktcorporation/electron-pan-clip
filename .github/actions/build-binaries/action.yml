@@ -28,13 +28,13 @@ runs:
   using: "composite"
   steps:
     - name: Node.js設定
-      uses: ./../node-setup
+      uses: ./.github/actions/node-setup
       with:
         node-version: ''
         package-path: '.'
         
     - name: Rust設定
-      uses: ./../setup-rust
+      uses: ./.github/actions/setup-rust
       with:
         toolchain: stable
     
