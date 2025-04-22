@@ -14,10 +14,6 @@ inputs:
     description: 'キャッシュのキー'
     required: false
     default: 'rust-setup'
-  install-dependencies:
-    description: 'Linux依存関係をインストールするかどうか'
-    required: false
-    default: 'true'
 
 runs:
   using: "composite"
@@ -41,17 +37,3 @@ runs:
         toolchain: ${{ inputs.toolchain }}
         override: true
         components: ${{ inputs.components }}
-        
-    - name: Linux依存関係をインストール
-      if: runner.os == 'Linux' && inputs.install-dependencies == 'true'
-      shell: bash
-      run: |
-        # sudoを使わずに直接apt-getを実行
-        sudo apt-get update -y
-        sudo apt-get install -y libx11-dev libxext-dev libxrender-dev libxtst-dev libxinerama-dev libxss-dev
-
-    # Swatinem/rust-cacheは一時的に無効化
-    # - name: Cache Rust dependencies
-    #   uses: Swatinem/rust-cache@v2
-    #   with:
-    #     key: ${{ inputs.cache-key }} 
