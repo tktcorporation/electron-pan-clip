@@ -14,6 +14,10 @@ inputs:
     description: 'キャッシュのキー'
     required: false
     default: 'rust-setup'
+  install-dependencies:
+    description: 'Linux依存関係をインストールするかどうか'
+    required: false
+    default: 'true'
 
 runs:
   using: "composite"
@@ -37,3 +41,44 @@ runs:
         toolchain: ${{ inputs.toolchain }}
         override: true
         components: ${{ inputs.components }}
+        
+    - name: Linux依存関係をインストール
+      if: runner.os == 'Linux' && inputs.install-dependencies == 'true'
+      shell: bash
+      run: |
+        echo "Installing dependencies for Linux"
+        sudo apt-get update -y
+        echo "Installing for x86_64"
+        sudo apt-get install -y libx11-dev libxext-dev libxrender-dev libxtst-dev libxinerama-dev libxss-dev
+
+        echo "Installing for x86_64-linux-gnu"
+        rustup target add x86_64-linux-gnu
+
+        echo "Installing for arm64"
+        sudo dpkg --add-architecture arm64
+
+        echo "Adding ports repository"
+        cat <<EOF | sudo tee /etc/apt/sources.list.d/ubuntu-ports-arm64.list
+        deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy main restricted universe multiverse
+        deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-updates main restricted universe multiverse
+        deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-security main restricted universe multiverse
+        EOF
+
+        echo "Updating and installing arm64 packages"
+        sudo apt-get update
+        sudo apt-get install -y \
+          libx11-dev:arm64 \
+          libxext-dev:arm64 \
+          libxrender-dev:arm64 \
+          libxtst-dev:arm64 \
+          libxinerama-dev:arm64 \
+          libxss-dev:arm64
+
+        echo "Installing for arm64-linux-gnu"
+        rustup target add arm64-linux-gnu
+
+    # Swatinem/rust-cacheは一時的に無効化
+    # - name: Cache Rust dependencies
+    #   uses: Swatinem/rust-cache@v2
+    #   with:
+    #     key: ${{ inputs.cache-key }} 
