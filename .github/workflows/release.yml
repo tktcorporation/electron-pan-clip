@@ -146,31 +146,23 @@ jobs:
           - name: linux-x64
             os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
+            setup-script: ""
           - name: linux-arm64
             os: ubuntu-22.04
             target: aarch64-unknown-linux-gnu
-            setup-script: |
-              sudo apt-get update -y
-              sudo dpkg --add-architecture arm64
-              sudo apt-get update -y # アーキテクチャ追加後に再度 update を実行
-              # sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libc6-dev-arm64-cross
-              # マルチアーキテクチャサポートを追加
-              # sudo dpkg --add-architecture arm64 # 重複するためコメントアウト
-              # sudo apt-get update # 重複するためコメントアウト
-              # X11ライブラリをインストール (コメントアウトのまま)
-              # sudo apt-get install -y libx11-dev libxext-dev libxrender-dev libxtst-dev libxinerama-dev
-              rustup target add aarch64-unknown-linux-gnu
+            setup-script: "sudo apt-get update -y && sudo dpkg --add-architecture arm64 && sudo apt-get update -y && rustup target add aarch64-unknown-linux-gnu"
           - name: macos-x64
             os: macos-latest
             target: x86_64-apple-darwin
-            setup-script: rustup target add x86_64-apple-darwin
+            setup-script: "rustup target add x86_64-apple-darwin"
           - name: macos-arm64
             os: macos-latest
             target: aarch64-apple-darwin
-            setup-script: rustup target add aarch64-apple-darwin
+            setup-script: "rustup target add aarch64-apple-darwin"
           - name: windows-x64
             os: windows-latest
             target: x86_64-pc-windows-msvc
+            setup-script: ""
     
     runs-on: ${{ matrix.os }}
     steps:
@@ -178,56 +170,15 @@ jobs:
         with:
           ref: ${{ github.event_name == 'release' && github.event.release.tag_name || 'main' }}
       
-      - name: パッケージバージョン取得
-        id: get-version
-        shell: bash
-        run: |
-          if [[ "${{ github.event_name }}" == "release" ]]; then
-            VERSION="${{ github.event.release.tag_name }}"
-            VERSION="${VERSION#v}"
-          else
-            VERSION="${{ needs.prepare-release.outputs.version }}"
-          fi
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-      
-      - name: Node.js設定
-        uses: ./.github/actions/node-setup
-        with:
-          node-version: ''
-          package-path: '.'
-          
-      - name: Rust設定
-        uses: ./.github/actions/setup-rust
-        with:
-          toolchain: stable
-      
-      # クロスコンパイル用の追加セットアップ
-      - name: クロスコンパイルセットアップ
-        if: matrix.setup-script != ''
-        shell: bash
-        run: ${{ matrix.setup-script }}
-      
-      # napi CLIのインストール
-      - name: napi CLIインストール
-        shell: bash
-        run: npm install -g @napi-rs/cli
-      
       # 特定のターゲット向けにビルド
       - name: バイナリビルド
-        shell: bash
-        run: |
-          napi build --platform --release --target ${{ matrix.target }}
-          find . -name "*.node" | grep "${{ matrix.target }}"
-      
-      # ビルド成果物をアップロード
-      - name: 成果物をアップロード
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/build-binaries
         with:
-          name: binaries-${{ matrix.name }}
-          path: |
-            *.node
-            npm/*/electron-pan-clip.*.node
-          if-no-files-found: error
+          name: ${{ matrix.name }}
+          os: ${{ matrix.os }}
+          target: ${{ matrix.target }}
+          setup-script: ${{ matrix.setup-script }}
+          artifact-name-prefix: 'binaries'
   
   # GitHub Releaseを作成
   create-release:

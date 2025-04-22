@@ -1,0 +1,108 @@
+name: PR Build Check
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'src/**'
+      - 'native/**'
+      - 'npm/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+
+jobs:
+  # 各プラットフォーム向けのバイナリをビルド
+  build-binaries:
+    name: バイナリビルドチェック (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false  # 一つのビルドが失敗しても他を続行
+      matrix:
+        include:
+          - name: linux-x64
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            setup-script: ""
+          - name: linux-arm64
+            os: ubuntu-22.04
+            target: aarch64-unknown-linux-gnu
+            setup-script: "sudo apt-get update -y && sudo dpkg --add-architecture arm64 && sudo apt-get update -y && rustup target add aarch64-unknown-linux-gnu"
+          - name: macos-x64
+            os: macos-latest
+            target: x86_64-apple-darwin
+            setup-script: "rustup target add x86_64-apple-darwin"
+          - name: macos-arm64
+            os: macos-latest
+            target: aarch64-apple-darwin
+            setup-script: "rustup target add aarch64-apple-darwin"
+          - name: windows-x64
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            setup-script: ""
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      # 特定のターゲット向けにビルド
+      - name: バイナリビルド
+        uses: ./.github/actions/build-binaries
+        with:
+          name: ${{ matrix.name }}
+          os: ${{ matrix.os }}
+          target: ${{ matrix.target }}
+          setup-script: ${{ matrix.setup-script }}
+          artifact-name-prefix: 'pr-binaries'
+  
+  # ビルド結果の検証
+  verify-binaries:
+    name: バイナリ検証
+    needs: build-binaries
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Node.js設定
+        uses: ./.github/actions/node-setup
+        with:
+          node-version: ''
+          package-path: '.'
+      
+      # ビルド成果物をダウンロード
+      - name: 成果物をダウンロード
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      
+      # 成果物を正しい場所にコピー
+      - name: 成果物を配置
+        shell: bash
+        run: |
+          mkdir -p npm/linux-x64-gnu npm/linux-arm64-gnu npm/darwin-x64 npm/darwin-arm64 npm/win32-x64-msvc
+          
+          # Linux x64
+          find artifacts/pr-binaries-linux-x64 -name "electron-pan-clip.linux-x64-gnu.node" -exec cp {} npm/linux-x64-gnu/ \;
+          
+          # Linux ARM64
+          find artifacts/pr-binaries-linux-arm64 -name "electron-pan-clip.linux-arm64-gnu.node" -exec cp {} npm/linux-arm64-gnu/ \;
+          
+          # macOS x64
+          find artifacts/pr-binaries-macos-x64 -name "electron-pan-clip.darwin-x64.node" -exec cp {} npm/darwin-x64/ \;
+          
+          # macOS ARM64
+          find artifacts/pr-binaries-macos-arm64 -name "electron-pan-clip.darwin-arm64.node" -exec cp {} npm/darwin-arm64/ \;
+          
+          # Windows x64
+          find artifacts/pr-binaries-windows-x64 -name "electron-pan-clip.win32-x64-msvc.node" -exec cp {} npm/win32-x64-msvc/ \;
+          
+          # 成果物の確認
+          find npm -type f | sort
+      
+      # バイナリ検証
+      - name: バイナリ検証
+        run: node scripts/verify-binaries.js 

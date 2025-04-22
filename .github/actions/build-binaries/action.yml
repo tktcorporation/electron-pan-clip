@@ -1,0 +1,68 @@
+name: 'マルチアーキテクチャバイナリビルド'
+description: '各プラットフォーム向けのバイナリをビルドする'
+
+inputs:
+  target:
+    description: 'ビルドターゲット (例: x86_64-unknown-linux-gnu)'
+    required: true
+  os:
+    description: 'ビルド実行OS'
+    required: true
+  name:
+    description: 'ビルド名 (例: linux-x64)'
+    required: true
+  setup-script:
+    description: 'クロスコンパイル用の追加セットアップスクリプト'
+    required: false
+    default: ''
+  upload-artifact:
+    description: 'ビルド成果物をアップロードするかどうか'
+    required: false
+    default: 'true'
+  artifact-name-prefix:
+    description: 'アーティファクト名のプレフィックス'
+    required: false
+    default: 'binaries'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Node.js設定
+      uses: ./../node-setup
+      with:
+        node-version: ''
+        package-path: '.'
+        
+    - name: Rust設定
+      uses: ./../setup-rust
+      with:
+        toolchain: stable
+    
+    # クロスコンパイル用の追加セットアップ
+    - name: クロスコンパイルセットアップ
+      if: inputs.setup-script != ''
+      shell: bash
+      run: ${{ inputs.setup-script }}
+    
+    # napi CLIのインストール
+    - name: napi CLIインストール
+      shell: bash
+      run: npm install -g @napi-rs/cli
+    
+    # 特定のターゲット向けにビルド
+    - name: バイナリビルド
+      shell: bash
+      run: |
+        napi build --platform --release --target ${{ inputs.target }}
+        find . -name "*.node" | grep "${{ inputs.target }}"
+    
+    # ビルド成果物をアップロード
+    - name: 成果物をアップロード
+      if: inputs.upload-artifact == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name-prefix }}-${{ inputs.name }}
+        path: |
+          *.node
+          npm/*/electron-pan-clip.*.node
+        if-no-files-found: error 

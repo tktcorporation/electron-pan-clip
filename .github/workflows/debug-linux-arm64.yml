@@ -18,7 +18,15 @@ jobs:
       - name: Add arm64 architecture
         run: sudo dpkg --add-architecture arm64
 
-      - name: apt-get update (アーキテクチャ追加後)
+      - name: Add ports.ubuntu.com for arm64
+        run: |
+          echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy main restricted universe multiverse" | sudo tee /etc/apt/sources.list.d/arm64.list
+          echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-updates main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list.d/arm64.list
+          echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-backports main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list.d/arm64.list
+          echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-security main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list.d/arm64.list
+          echo "Added arm64 sources pointing to ports.ubuntu.com"
+
+      - name: apt-get update (アーキテクチャ追加後、ports追加後)
         run: sudo apt-get update -y
         # ここで失敗する場合は、リポジトリソースの確認やキャッシュクリアが必要かもしれない
 
