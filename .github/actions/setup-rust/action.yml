@@ -22,18 +22,15 @@ inputs:
 runs:
   using: "composite"
   steps:
-    # 必要なツールをインストール
     - name: 依存ツールインストール
       shell: bash
       run: |
         sudo apt-get update -y
         sudo apt-get install -y curl wget
 
-    # justを直接インストール
     - name: Justインストール
       uses: extractions/setup-just@v3
 
-    # rustupを使用
     - name: Setup Rust
       uses: actions-rs/toolchain@v1
       with:
@@ -42,17 +39,15 @@ runs:
         override: true
         components: ${{ inputs.components }}
 
-    # Linux依存関係をインストール
     - name: Linux依存関係をインストール
       if: runner.os == 'Linux' && inputs.install-dependencies == 'true'
       shell: bash
       run: |
         echo "Installing dependencies for Linux"
-        # Azure ミラーを amd64 専用に制限して arm64 の 404 を回避
-        sudo sed -i \
-          -e 's|^deb http://azure.archive.ubuntu.com/ubuntu|deb [arch=amd64] http://azure.archive.ubuntu.com/ubuntu|' \
-          -e 's|^deb http://azure.archive.ubuntu.com/ubuntu jammy-updates|deb [arch=amd64] http://azure.archive.ubuntu.com/ubuntu jammy-updates|' \
-          -e 's|^deb https://packages.microsoft.com/repos/azure-cli|deb [arch=amd64] https://packages.microsoft.com/repos/azure-cli|' \
+        # Azure ミラーを amd64 専用に制限して arm64 の 404 を回避（codename に関係なく適用）
+        sudo sed -i -r \
+          -e "s|^deb ([^ ]*azure\.archive\.ubuntu\.com/ubuntu[^ ]*)|deb [arch=amd64] \1|" \
+          -e "s|^deb ([^ ]*packages\.microsoft\.com/repos/azure-cli[^ ]*)|deb [arch=amd64] \1|" \
           /etc/apt/sources.list
         sudo apt-get update -y
         echo "Installing for x86_64"
