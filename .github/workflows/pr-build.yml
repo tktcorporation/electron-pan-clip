@@ -17,9 +17,46 @@ on:
     #   - 'Cargo.lock'
 
 jobs:
-  cross-build:
-    name: クロスビルド
-    runs-on: ubuntu-latest
+  # 各プラットフォーム向けのバイナリをビルド
+  build-binaries:
+    name: バイナリビルド (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false  # 一つのビルドが失敗しても他を続行
+      matrix:
+        include:
+          - name: linux-x64
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            use-cross: true
+            setup-script: |
+              echo "Installing cross..."
+              cargo install cross
+              echo "Setup complete for cross build"
+          - name: linux-arm64
+            os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            use-cross: true
+            setup-script: |
+              echo "Installing cross..."
+              cargo install cross
+              echo "Setup complete for cross build"
+          - name: macos-x64
+            os: macos-latest
+            target: x86_64-apple-darwin
+            use-cross: false
+            setup-script: "rustup target add x86_64-apple-darwin"
+          - name: macos-arm64
+            os: macos-latest
+            target: aarch64-apple-darwin
+            use-cross: false
+            setup-script: "rustup target add aarch64-apple-darwin"
+          - name: windows-x64
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            use-cross: false
+            setup-script: ""
+    
     steps:
       - uses: actions/checkout@v3
       
@@ -37,51 +74,45 @@ jobs:
           package-path: '.'
       
       - name: Dockerセットアップ
+        if: ${{ matrix.use-cross }}
         uses: docker/setup-buildx-action@v2
       
-      - name: Crossのインストール
-        run: cargo install cross
+      - name: 環境セットアップ
+        shell: bash
+        run: ${{ matrix.setup-script }}
       
-      - name: クロスビルド実行
-        run: |
-          # Linux x64向け
-          cross build --target x86_64-unknown-linux-gnu
-          
-          # Linux ARM64向け
-          cross build --target aarch64-unknown-linux-gnu
-          
-          # macOS x64向け
-          cross build --target x86_64-apple-darwin
-          
-          # macOS ARM64向け
-          cross build --target aarch64-apple-darwin
-          
-          # Windows x64向け
-          cross build --target x86_64-pc-windows-msvc
+      - name: Linuxビルド（cross使用）
+        if: ${{ matrix.use-cross }}
+        run: cross build --target ${{ matrix.target }}
       
-      - name: ビルド成果物の収集
+      - name: 通常ビルド（cross不使用）
+        if: ${{ !matrix.use-cross }}
+        uses: ./.github/actions/build-binaries
+        with:
+          name: ${{ matrix.name }}
+          os: ${{ matrix.os }}
+          target: ${{ matrix.target }}
+          setup-script: ""  # セットアップは上のステップで実行済み
+          artifact-name-prefix: 'pr-binaries'
+      
+      - name: Linux成果物の収集
+        if: ${{ matrix.use-cross }}
         run: |
-          mkdir -p artifacts/pr-binaries-linux-x64 artifacts/pr-binaries-linux-arm64 artifacts/pr-binaries-macos-x64 artifacts/pr-binaries-macos-arm64 artifacts/pr-binaries-windows-x64
-          
-          # 適切なパスにビルド成果物をコピー
-          find target/x86_64-unknown-linux-gnu/debug -name "electron-pan-clip.*" -exec cp {} artifacts/pr-binaries-linux-x64/ \;
-          find target/aarch64-unknown-linux-gnu/debug -name "electron-pan-clip.*" -exec cp {} artifacts/pr-binaries-linux-arm64/ \;
-          find target/x86_64-apple-darwin/debug -name "electron-pan-clip.*" -exec cp {} artifacts/pr-binaries-macos-x64/ \;
-          find target/aarch64-apple-darwin/debug -name "electron-pan-clip.*" -exec cp {} artifacts/pr-binaries-macos-arm64/ \;
-          find target/x86_64-pc-windows-msvc/debug -name "electron-pan-clip.*" -exec cp {} artifacts/pr-binaries-windows-x64/ \;
-          
-          # 成果物の確認
+          mkdir -p artifacts/pr-binaries-${{ matrix.name }}
+          find target/${{ matrix.target }}/debug -name "electron-pan-clip.*" -exec cp {} artifacts/pr-binaries-${{ matrix.name }}/ \;
           find artifacts -type f | sort
       
-      - name: 成果物のアップロード
+      - name: Linux成果物のアップロード
+        if: ${{ matrix.use-cross }}
         uses: actions/upload-artifact@v4
         with:
-          path: artifacts
-      
+          name: pr-binaries-${{ matrix.name }}
+          path: artifacts/pr-binaries-${{ matrix.name }}
+  
   # ビルド結果の検証
   verify-binaries:
     name: バイナリ検証
-    needs: cross-build
+    needs: build-binaries
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -97,6 +128,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: artifacts
+          pattern: pr-binaries-*
       
       # 成果物を正しい場所にコピー
       - name: 成果物を配置
