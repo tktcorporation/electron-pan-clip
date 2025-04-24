@@ -70,7 +70,28 @@ runs:
           echo "内容 $dir:"
           ls -la $dir || echo "$dirは空またはアクセスできません"
         done
-    
+
+    - name: 成果物をターゲットディレクトリに移動
+      shell: bash
+      run: |
+        set -e
+        # 出力先を release ディレクトリにする
+        TARGET_DIR="target/${{ inputs.target }}/release"
+        mkdir -p "$TARGET_DIR"
+        
+        # 生成された.nodeファイルを探す (ルートから検索)
+        NODE_FILE=$(find . -maxdepth 1 -name "electron-pan-clip.*.node" -print -quit)
+        
+        if [[ -n "$NODE_FILE" ]]; then
+          echo "Moving $NODE_FILE to $TARGET_DIR"
+          mv "$NODE_FILE" "$TARGET_DIR/"
+        else
+          echo "Error: No .node file found in project root after build!"
+          # ビルド後のファイル検索（再実行）
+          find . -name "*.node"
+          exit 1
+        fi
+
     # ビルド成果物をアップロード
     - name: 成果物をアップロード
       if: inputs.upload-artifact == 'true'
