@@ -25,30 +25,30 @@ jobs:
       fail-fast: false  # 一つのビルドが失敗しても他を続行
       matrix:
         include:
-          - name: linux-x64
+          - name: linux-x64-gnu # napi naming convention
             os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            use-cross: true
-          - name: linux-arm64
+            # use-cross: true # Removed
+          - name: linux-arm64-gnu # napi naming convention
             os: ubuntu-latest
             target: aarch64-unknown-linux-gnu
-            use-cross: true
-          - name: macos-x64
+            # use-cross: true # Removed
+          - name: darwin-x64 # napi naming convention
             os: macos-latest
             target: x86_64-apple-darwin
-            use-cross: false
-            setup-script: "rustup target add x86_64-apple-darwin"
-          - name: macos-arm64
+            # use-cross: false # Removed
+            # setup-script: "rustup target add x86_64-apple-darwin" # Removed
+          - name: darwin-arm64 # napi naming convention
             os: macos-latest
             target: aarch64-apple-darwin
-            use-cross: false
-            setup-script: "rustup target add aarch64-apple-darwin"
-          - name: windows-x64
+            # use-cross: false # Removed
+            # setup-script: "rustup target add aarch64-apple-darwin" # Removed
+          - name: win32-x64-msvc # napi naming convention
             os: windows-latest
             target: x86_64-pc-windows-msvc
-            use-cross: false
-            setup-script: ""
-    
+            # use-cross: false # Removed
+            # setup-script: "" # Removed
+
     steps:
       - uses: actions/checkout@v3
       
@@ -65,36 +65,55 @@ jobs:
           node-version: ''
           package-path: '.'
       
-      - name: Dockerセットアップ
-        if: ${{ matrix.use-cross }}
+      - name: Dockerセットアップ (Linux QEMU用)
+        # if: ${{ matrix.use-cross }} # Removed, now based on OS
+        if: startsWith(matrix.os, 'ubuntu')
         uses: docker/setup-buildx-action@v2
-      
-      - name: 環境セットアップ
-        shell: bash
-        run: ${{ matrix.setup-script }}
-      
-      - name: Crossのインストール
-        if: ${{ matrix.use-cross }}
-        run: cargo install cross --locked
-      
-      - name: Linuxビルド（cross使用）
-        if: ${{ matrix.use-cross }}
-        run: cross build --release --target ${{ matrix.target }}
-      
-      - name: macOS/Windows環境セットアップ (napi-rs)
-        if: ${{ !matrix.use-cross }}
+
+      - name: QEMUセットアップ (Linuxのみ)
+        if: startsWith(matrix.os, 'ubuntu')
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64 # Build ARM64 on x64 host
+
+      # - name: 環境セットアップ # Removed setup-script
+      #   shell: bash
+      #   run: ${{ matrix.setup-script }}
+
+      # - name: Crossのインストール # Removed cross
+      #   if: ${{ matrix.use-cross }}
+      #   run: cargo install cross --locked
+
+      # - name: Linuxビルド（cross使用） # Removed cross build step
+      #   if: ${{ matrix.use-cross }}
+      #   run: cross build --release --target ${{ matrix.target }}
+
+      - name: napi-rs CLI セットアップ # Renamed and removed condition
+        # if: ${{ !matrix.use-cross }} # Removed condition
         shell: bash
         run: npm install -g @napi-rs/cli
 
-      - name: macOS/Windowsビルド（napi build使用）
-        if: ${{ !matrix.use-cross }}
+      - name: バイナリビルド (napi build) # Renamed and removed condition
+        # if: ${{ !matrix.use-cross }} # Removed condition
         shell: bash
         run: |
           set -ex
-          napi build --platform --release --target ${{ matrix.target }}
+          # Use appropriate command based on OS and target for potential QEMU usage
+          if [[ "${{ matrix.os }}" == "ubuntu-latest" && "${{ matrix.target }}" == "aarch64-unknown-linux-gnu" ]]; then
+            # Explicitly use cross-compilation features if needed, napi might handle this automatically
+            echo "Building for linux-arm64 on x64 host..."
+            # napi build might automatically use QEMU if set up
+            napi build --platform --release --target ${{ matrix.target }}
+          elif [[ "${{ matrix.os }}" == "ubuntu-latest" && "${{ matrix.target }}" == "x86_64-unknown-linux-gnu" ]]; then
+             echo "Building for linux-x64 natively..."
+             napi build --platform --release --target ${{ matrix.target }}
+          else
+             # macOS and Windows build as before
+             napi build --platform --release --target ${{ matrix.target }}
+          fi
 
-      - name: macOS/Windows成果物移動 (.node)
-        if: ${{ !matrix.use-cross }}
+      - name: 成果物移動 (.node) # Renamed and removed condition
+        # if: ${{ !matrix.use-cross }} # Removed condition
         shell: bash
         run: |
           set -e
@@ -126,7 +145,7 @@ jobs:
           ARTIFACT_DIR="artifacts/pr-binaries-${{ matrix.name }}"
           mkdir -p "$ARTIFACT_DIR"
           TARGET_RELEASE_DIR="target/${{ matrix.target }}/release"
-          # matrix.name (例: linux-x64) を使って期待するファイル名を生成
+          # matrix.name (例: linux-x64-gnu) を使って期待するファイル名を生成
           EXPECTED_NODE_FILENAME="electron-pan-clip.${{ matrix.name }}.node"
 
           echo "Target release directory: $TARGET_RELEASE_DIR"
@@ -135,43 +154,29 @@ jobs:
           echo "Listing contents of $TARGET_RELEASE_DIR:"
           ls -la "$TARGET_RELEASE_DIR" || echo "Directory not found or empty"
 
-          if [[ "${{ matrix.use-cross }}" == "true" ]]; then
-            # --- cross build (.so ファイルを探してリネーム) ---
-            echo "Searching for .so file (cross build)..."
-            # Linux では lib<name>.so, macOS では lib<name>.dylib
-            # SO_FILE=$(find "$TARGET_RELEASE_DIR" -maxdepth 1 -name "lib*.so" -print -quit) # Linux専用
-            SO_FILE=$(find "$TARGET_RELEASE_DIR" -maxdepth 1 \( -name "lib*.so" -o -name "lib*.dylib" \) -print -quit) # Linux & macOS
-            
-            if [[ -n "$SO_FILE" ]]; then
-              echo "Found shared library file: $SO_FILE"
-              echo "Copying and renaming to $ARTIFACT_DIR/$EXPECTED_NODE_FILENAME"
-              cp "$SO_FILE" "$ARTIFACT_DIR/$EXPECTED_NODE_FILENAME"
-            else
-              echo "Error: No .so or .dylib file found in $TARGET_RELEASE_DIR for cross build!"
-              exit 1
-            fi
+          echo "Searching for .node file (napi build)..."
+          # find で期待されるファイル名を直接探す方が確実かもしれない
+          NODE_FILE=$(find "$TARGET_RELEASE_DIR" -maxdepth 1 -name "$EXPECTED_NODE_FILENAME" -print -quit)
+
+          if [[ -n "$NODE_FILE" ]]; then
+            echo "Found node file: $NODE_FILE"
+            echo "Copying $NODE_FILE to $ARTIFACT_DIR/"
+            cp "$NODE_FILE" "$ARTIFACT_DIR/"
           else
-            # --- napi build (.node ファイルを探す) ---
-            echo "Searching for .node file (napi build)..."
-            # find で期待されるファイル名を直接探す方が確実かもしれない
-            # NODE_FILE=$(find "$TARGET_RELEASE_DIR" -maxdepth 1 -name "electron-pan-clip.*.node" -print -quit)
-            NODE_FILE=$(find "$TARGET_RELEASE_DIR" -maxdepth 1 -name "$EXPECTED_NODE_FILENAME" -print -quit)
-            
-            if [[ -n "$NODE_FILE" ]]; then
-              echo "Found node file: $NODE_FILE"
-              echo "Copying $NODE_FILE to $ARTIFACT_DIR/"
-              cp "$NODE_FILE" "$ARTIFACT_DIR/"
+            # 念のため、パターンマッチでも探してみる (napi build の出力名が微妙に違う可能性)
+            NODE_FILE_PATTERN=$(find "$TARGET_RELEASE_DIR" -maxdepth 1 -name "electron-pan-clip.*.node" -print -quit)
+            if [[ -n "$NODE_FILE_PATTERN" ]]; then
+              echo "Found node file with pattern: $NODE_FILE_PATTERN"
+              echo "Copying $NODE_FILE_PATTERN to $ARTIFACT_DIR/$EXPECTED_NODE_FILENAME" # Rename to expected name
+              cp "$NODE_FILE_PATTERN" "$ARTIFACT_DIR/$EXPECTED_NODE_FILENAME"
             else
-              # 念のため、パターンマッチでも探してみる (napi build の出力名が微妙に違う可能性)
-              NODE_FILE_PATTERN=$(find "$TARGET_RELEASE_DIR" -maxdepth 1 -name "electron-pan-clip.*.node" -print -quit)
-              if [[ -n "$NODE_FILE_PATTERN" ]]; then
-                echo "Found node file with pattern: $NODE_FILE_PATTERN"
-                echo "Copying $NODE_FILE_PATTERN to $ARTIFACT_DIR/$EXPECTED_NODE_FILENAME"
-                cp "$NODE_FILE_PATTERN" "$ARTIFACT_DIR/$EXPECTED_NODE_FILENAME"
-              else 
-                 echo "Error: No .node file found matching '$EXPECTED_NODE_FILENAME' or pattern 'electron-pan-clip.*.node' in $TARGET_RELEASE_DIR for napi build!"
-                 exit 1
-              fi
+               echo "Error: No .node file found matching '$EXPECTED_NODE_FILENAME' or pattern 'electron-pan-clip.*.node' in $TARGET_RELEASE_DIR for napi build!"
+               # Add more debugging info
+               echo "Listing current directory:"
+               ls -la .
+               echo "Listing target directory ($TARGET_RELEASE_DIR):"
+               ls -la "$TARGET_RELEASE_DIR" || echo "$TARGET_RELEASE_DIR not found or empty"
+               exit 1
             fi
           fi
 
