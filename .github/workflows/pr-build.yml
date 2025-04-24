@@ -81,51 +81,65 @@ jobs:
         if: ${{ matrix.use-cross }}
         run: cross build --release --target ${{ matrix.target }}
       
-      - name: 通常ビルド（cross不使用）
+      - name: macOS/Windows環境セットアップ (napi-rs)
         if: ${{ !matrix.use-cross }}
-        uses: ./.github/actions/build-binaries
-        with:
-          name: ${{ matrix.name }}
-          os: ${{ matrix.os }}
-          target: ${{ matrix.target }}
-          setup-script: ""  # セットアップは上のステップで実行済み
-          artifact-name-prefix: 'pr-binaries'
-          upload-artifact: 'false'
-      
-      - name: Linux成果物の収集
-        if: ${{ matrix.use-cross }}
-        run: |
-          mkdir -p artifacts/pr-binaries-${{ matrix.name }}
-          find target/${{ matrix.target }}/debug -name "electron-pan-clip.*" -exec cp {} artifacts/pr-binaries-${{ matrix.name }}/ \;
-          find artifacts -type f | sort
-      
-      - name: Linux成果物のアップロード
-        if: ${{ matrix.use-cross }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: pr-binaries-${{ matrix.name }}
-          path: artifacts/pr-binaries-${{ matrix.name }}
+        shell: bash
+        run: npm install -g @napi-rs/cli
 
-      - name: 成果物を収集してアップロード
+      - name: macOS/Windowsビルド（napi build使用）
+        if: ${{ !matrix.use-cross }}
+        shell: bash
+        run: |
+          set -ex
+          napi build --platform --release --target ${{ matrix.target }}
+
+      - name: macOS/Windows成果物移動 (.node)
+        if: ${{ !matrix.use-cross }}
+        shell: bash
+        run: |
+          set -e
+          TARGET_DIR="target/${{ matrix.target }}/release"
+          mkdir -p "$TARGET_DIR"
+          # napi build はルートに .node を出力する場合があるため検索
+          NODE_FILE=$(find . -maxdepth 1 -name "electron-pan-clip.*.node" -print -quit)
+          if [[ -n "$NODE_FILE" ]]; then
+            echo "Moving $NODE_FILE to $TARGET_DIR"
+            mv "$NODE_FILE" "$TARGET_DIR/"
+          else
+            # napi build が直接 target/.../release に出力する可能性も考慮
+            NODE_FILE_IN_TARGET=$(find "$TARGET_DIR" -name "electron-pan-clip.*.node" -print -quit)
+            if [[ -z "$NODE_FILE_IN_TARGET" ]]; then
+               echo "Error: No .node file found after napi build in root or $TARGET_DIR!"
+               echo "Listing current directory:"
+               ls -la .
+               echo "Listing target directory ($TARGET_DIR):"
+               ls -la "$TARGET_DIR" || echo "$TARGET_DIR not found or empty"
+               exit 1
+            fi
+            echo ".node file already exists in $TARGET_DIR, no move needed."
+          fi
+      
+      # --- 共通ステップ --- 
+      - name: 成果物を収集
+        shell: bash
         run: |
           ARTIFACT_DIR="artifacts/pr-binaries-${{ matrix.name }}"
           mkdir -p "$ARTIFACT_DIR"
-          # Ensure we look in the release directory
-          NODE_FILE=$(find target/${{ matrix.target }}/release -name "electron-pan-clip.*.node" -print -quit)
+          TARGET_RELEASE_DIR="target/${{ matrix.target }}/release"
+          
+          echo "Searching for .node file in $TARGET_RELEASE_DIR"
+          ls -la "$TARGET_RELEASE_DIR"
+
+          # release ディレクトリから .node ファイルを検索
+          NODE_FILE=$(find "$TARGET_RELEASE_DIR" -name "electron-pan-clip.*.node" -print -quit)
+          
           if [[ -n "$NODE_FILE" ]]; then
             echo "Copying $NODE_FILE to $ARTIFACT_DIR"
-            # NODE_FILE変数を使って直接コピー
             cp "$NODE_FILE" "$ARTIFACT_DIR/"
           else
-            echo "Error: No .node file found in target/${{ matrix.target }}/release/"
-            # Add directory listing for debugging
-            echo "Listing contents of target/${{ matrix.target }}/:"
-            ls -la target/${{ matrix.target }}/ || echo "target/${{ matrix.target }}/ not found"
-            echo "Listing contents of target/${{ matrix.target }}/release/ if it exists:"
-            ls -la target/${{ matrix.target }}/release/ || echo "target/${{ matrix.target }}/release/ not found"
+            echo "Error: No .node file found in $TARGET_RELEASE_DIR/"
             exit 1
           fi
-        shell: bash
 
       - name: 成果物をアップロード
         uses: actions/upload-artifact@v4
