@@ -126,19 +126,53 @@ jobs:
           ARTIFACT_DIR="artifacts/pr-binaries-${{ matrix.name }}"
           mkdir -p "$ARTIFACT_DIR"
           TARGET_RELEASE_DIR="target/${{ matrix.target }}/release"
-          
-          echo "Searching for .node file in $TARGET_RELEASE_DIR"
-          ls -la "$TARGET_RELEASE_DIR"
+          # matrix.name (例: linux-x64) を使って期待するファイル名を生成
+          EXPECTED_NODE_FILENAME="electron-pan-clip.${{ matrix.name }}.node"
 
-          # release ディレクトリから .node ファイルを検索
-          NODE_FILE=$(find "$TARGET_RELEASE_DIR" -name "electron-pan-clip.*.node" -print -quit)
-          
-          if [[ -n "$NODE_FILE" ]]; then
-            echo "Copying $NODE_FILE to $ARTIFACT_DIR"
-            cp "$NODE_FILE" "$ARTIFACT_DIR/"
+          echo "Target release directory: $TARGET_RELEASE_DIR"
+          echo "Artifact directory: $ARTIFACT_DIR"
+          echo "Expected node filename: $EXPECTED_NODE_FILENAME"
+          echo "Listing contents of $TARGET_RELEASE_DIR:"
+          ls -la "$TARGET_RELEASE_DIR" || echo "Directory not found or empty"
+
+          if [[ "${{ matrix.use-cross }}" == "true" ]]; then
+            # --- cross build (.so ファイルを探してリネーム) ---
+            echo "Searching for .so file (cross build)..."
+            # Linux では lib<name>.so, macOS では lib<name>.dylib
+            # SO_FILE=$(find "$TARGET_RELEASE_DIR" -maxdepth 1 -name "lib*.so" -print -quit) # Linux専用
+            SO_FILE=$(find "$TARGET_RELEASE_DIR" -maxdepth 1 \( -name "lib*.so" -o -name "lib*.dylib" \) -print -quit) # Linux & macOS
+            
+            if [[ -n "$SO_FILE" ]]; then
+              echo "Found shared library file: $SO_FILE"
+              echo "Copying and renaming to $ARTIFACT_DIR/$EXPECTED_NODE_FILENAME"
+              cp "$SO_FILE" "$ARTIFACT_DIR/$EXPECTED_NODE_FILENAME"
+            else
+              echo "Error: No .so or .dylib file found in $TARGET_RELEASE_DIR for cross build!"
+              exit 1
+            fi
           else
-            echo "Error: No .node file found in $TARGET_RELEASE_DIR/"
-            exit 1
+            # --- napi build (.node ファイルを探す) ---
+            echo "Searching for .node file (napi build)..."
+            # find で期待されるファイル名を直接探す方が確実かもしれない
+            # NODE_FILE=$(find "$TARGET_RELEASE_DIR" -maxdepth 1 -name "electron-pan-clip.*.node" -print -quit)
+            NODE_FILE=$(find "$TARGET_RELEASE_DIR" -maxdepth 1 -name "$EXPECTED_NODE_FILENAME" -print -quit)
+            
+            if [[ -n "$NODE_FILE" ]]; then
+              echo "Found node file: $NODE_FILE"
+              echo "Copying $NODE_FILE to $ARTIFACT_DIR/"
+              cp "$NODE_FILE" "$ARTIFACT_DIR/"
+            else
+              # 念のため、パターンマッチでも探してみる (napi build の出力名が微妙に違う可能性)
+              NODE_FILE_PATTERN=$(find "$TARGET_RELEASE_DIR" -maxdepth 1 -name "electron-pan-clip.*.node" -print -quit)
+              if [[ -n "$NODE_FILE_PATTERN" ]]; then
+                echo "Found node file with pattern: $NODE_FILE_PATTERN"
+                echo "Copying $NODE_FILE_PATTERN to $ARTIFACT_DIR/$EXPECTED_NODE_FILENAME"
+                cp "$NODE_FILE_PATTERN" "$ARTIFACT_DIR/$EXPECTED_NODE_FILENAME"
+              else 
+                 echo "Error: No .node file found matching '$EXPECTED_NODE_FILENAME' or pattern 'electron-pan-clip.*.node' in $TARGET_RELEASE_DIR for napi build!"
+                 exit 1
+              fi
+            fi
           fi
 
       - name: 成果物をアップロード
