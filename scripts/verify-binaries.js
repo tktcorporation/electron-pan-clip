@@ -11,10 +11,11 @@ const path = require("node:path");
 // 検証するプラットフォーム
 const platforms = [
 	"linux-x64-gnu",
-	"linux-arm64-gnu",
+	// "linux-arm64-gnu", // Removed
 	"darwin-x64",
 	"darwin-arm64",
 	"win32-x64-msvc",
+	"win32-arm64-msvc", // Added
 ];
 
 // 結果を保存する配列
