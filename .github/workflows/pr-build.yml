@@ -58,7 +58,10 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
-      
+
+      - name: Rustターゲットの追加
+        run: rustup target add ${{ matrix.target }}
+
       - name: Node.js設定
         uses: ./.github/actions/node-setup
         with:
@@ -76,17 +79,35 @@ jobs:
         with:
           platforms: arm64 # Build ARM64 on x64 host
 
-      # - name: 環境セットアップ # Removed setup-script
-      #   shell: bash
-      #   run: ${{ matrix.setup-script }}
-
-      # - name: Crossのインストール # Removed cross
-      #   if: ${{ matrix.use-cross }}
-      #   run: cargo install cross --locked
-
-      # - name: Linuxビルド（cross使用） # Removed cross build step
-      #   if: ${{ matrix.use-cross }}
-      #   run: cross build --release --target ${{ matrix.target }}
+      - name: Linux 依存関係のインストールと設定
+        if: startsWith(matrix.os, 'ubuntu')
+        shell: bash
+        run: |
+          sudo apt-get update -y
+          if [[ "${{ matrix.target }}" == "aarch64-unknown-linux-gnu" ]]; then
+            echo "Installing dependencies for ARM64 cross-compilation..."
+            sudo apt-get install -y --no-install-recommends \
+              gcc-aarch64-linux-gnu \
+              g++-aarch64-linux-gnu \
+              pkg-config-aarch64-linux-gnu \
+              libx11-dev:arm64 \
+              libxtst-dev:arm64 \
+              libdbus-1-dev:arm64 # electron-rs/cargo-build requires this
+            # Configure pkg-config for cross-compilation
+            export PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig
+            export PKG_CONFIG_ALLOW_CROSS=1
+            export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
+            echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> $GITHUB_ENV
+            echo "PKG_CONFIG_ALLOW_CROSS=1" >> $GITHUB_ENV
+            echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
+          elif [[ "${{ matrix.target }}" == "x86_64-unknown-linux-gnu" ]]; then
+            echo "Installing dependencies for x86_64 native compilation..."
+            sudo apt-get install -y --no-install-recommends \
+              pkg-config \
+              libx11-dev \
+              libxtst-dev \
+              libdbus-1-dev # electron-rs/cargo-build requires this
+          fi
 
       - name: napi-rs CLI セットアップ # Renamed and removed condition
         # if: ${{ !matrix.use-cross }} # Removed condition
@@ -99,18 +120,22 @@ jobs:
         run: |
           set -ex
           # Use appropriate command based on OS and target for potential QEMU usage
-          if [[ "${{ matrix.os }}" == "ubuntu-latest" && "${{ matrix.target }}" == "aarch64-unknown-linux-gnu" ]]; then
-            # Explicitly use cross-compilation features if needed, napi might handle this automatically
-            echo "Building for linux-arm64 on x64 host..."
-            # napi build might automatically use QEMU if set up
-            napi build --platform --release --target ${{ matrix.target }}
-          elif [[ "${{ matrix.os }}" == "ubuntu-latest" && "${{ matrix.target }}" == "x86_64-unknown-linux-gnu" ]]; then
-             echo "Building for linux-x64 natively..."
-             napi build --platform --release --target ${{ matrix.target }}
-          else
-             # macOS and Windows build as before
-             napi build --platform --release --target ${{ matrix.target }}
-          fi
+          # Environment variables for cross-compilation (like PKG_CONFIG_PATH) are set in the previous step for Linux
+          # if [[ "${{ matrix.os }}" == "ubuntu-latest" && "${{ matrix.target }}" == "aarch64-unknown-linux-gnu" ]]; then
+          #   # Explicitly use cross-compilation features if needed, napi might handle this automatically
+          #   echo "Building for linux-arm64 on x64 host..."
+          #   # napi build might automatically use QEMU if set up
+          #   napi build --platform --release --target ${{ matrix.target }}
+          # elif [[ "${{ matrix.os }}" == "ubuntu-latest" && "${{ matrix.target }}" == "x86_64-unknown-linux-gnu" ]]; then
+          #    echo "Building for linux-x64 natively..."
+          #    napi build --platform --release --target ${{ matrix.target }}
+          # else
+          #    # macOS and Windows build as before
+          #    napi build --platform --release --target ${{ matrix.target }}
+          # fi
+          # Simpler approach: let napi/cargo handle it with the correct env vars set
+          echo "Running napi build for target: ${{ matrix.target }}"
+          napi build --platform --release --target ${{ matrix.target }}
 
       - name: 成果物移動 (.node) # Renamed and removed condition
         # if: ${{ !matrix.use-cross }} # Removed condition
