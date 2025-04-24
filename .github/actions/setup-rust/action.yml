@@ -17,7 +17,7 @@ inputs:
   install-dependencies:
     description: 'Linux依存関係をインストールするかどうか'
     required: false
-    default: 'true'
+    default: 'false'
   just-version:
     description: 'Justのバージョン'
     required: false
@@ -26,11 +26,13 @@ inputs:
 runs:
   using: "composite"
   steps:
+    # justを直接インストール
     - name: Justインストール
       uses: extractions/setup-just@v3
       with:
         just-version: ${{ inputs.just-version }}
 
+    # rustupを使用
     - name: Setup Rust
       uses: actions-rs/toolchain@v1
       with:
@@ -42,9 +44,13 @@ runs:
     - name: Linux依存関係をインストール
       if: runner.os == 'Linux' && inputs.install-dependencies == 'true'
       shell: bash
-      run: just install-linux-deps
+      run: |
+        # sudoを使わずに直接apt-getを実行
+        sudo apt-get update -y
+        sudo apt-get install -y libx11-dev libxext-dev libxrender-dev libxtst-dev libxinerama-dev libxss-dev
 
-    - name: Cache Rust dependencies
-      uses: Swatinem/rust-cache@v2
-      with:
-        key: ${{ inputs.cache-key }} 
+    # Swatinem/rust-cacheは一時的に無効化
+    # - name: Cache Rust dependencies
+    #   uses: Swatinem/rust-cache@v2
+    #   with:
+    #     key: ${{ inputs.cache-key }} 

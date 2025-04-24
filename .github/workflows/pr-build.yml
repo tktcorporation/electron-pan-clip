@@ -1,0 +1,143 @@
+name: PR Build Check
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    branches:
+      - main
+    # paths:
+    #   - 'src/**'
+    #   - 'native/**'
+    #   - 'npm/**'
+    #   - 'package.json'
+    #   - 'pnpm-lock.yaml'
+    #   - 'Cargo.toml'
+    #   - 'Cargo.lock'
+
+jobs:
+  # 各プラットフォーム向けのバイナリをビルド
+  build-binaries:
+    name: バイナリビルド (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false  # 一つのビルドが失敗しても他を続行
+      matrix:
+        include:
+          - name: linux-x64-gnu # napi naming convention
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - name: darwin-x64 # napi naming convention
+            os: macos-latest
+            target: x86_64-apple-darwin
+          - name: darwin-arm64 # napi naming convention
+            os: macos-latest
+            target: aarch64-apple-darwin
+          - name: win32-x64-msvc # napi naming convention
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+          - name: win32-arm64-msvc # napi naming convention
+            os: windows-latest
+            target: aarch64-pc-windows-msvc
+
+    steps:
+      - uses: actions/checkout@v3
+
+      # Use the new composite action for building
+      - name: Build Native Module
+        uses: ./.github/actions/build-native-module
+        with:
+          name: ${{ matrix.name }}
+          os: ${{ matrix.os }}
+          target: ${{ matrix.target }}
+          # artifact-name-prefix defaults to 'pr-binaries', which is correct here
+
+      # --- Removed Steps (now inside the composite action) ---
+      # - name: Rustツールチェインのセットアップ
+      #   uses: actions-rs/toolchain@v1
+      #   ...
+      # - name: Rustターゲットの追加
+      #   run: rustup target add ${{ matrix.target }}
+      # - name: Node.js設定
+      #   uses: ./.github/actions/node-setup
+      #   ...
+      # - name: Linux 依存関係のインストールと設定
+      #   if: startsWith(matrix.os, 'ubuntu')
+      #   ...
+      # - name: napi-rs CLI セットアップ
+      #   run: npm install -g @napi-rs/cli
+      # - name: バイナリビルド (napi build)
+      #   run: |
+      #     ...
+      #     napi build --platform --release --target ${{ matrix.target }}
+      # - name: 成果物移動 (.node)
+      #   run: |
+      #     ...
+      # - name: 成果物を収集
+      #   run: |
+      #     ...
+      # - name: 成果物をアップロード
+      #   uses: actions/upload-artifact@v4
+      #   ...
+
+  # ビルド結果の検証
+  verify-binaries:
+    name: バイナリ検証
+    needs: build-binaries
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Node.js設定
+        uses: ./.github/actions/node-setup
+        with:
+          node-version: ''
+          package-path: '.'
+      
+      # ビルド成果物をダウンロード
+      - name: 成果物をダウンロード
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: pr-binaries-*
+      
+      # 成果物を正しい場所にコピー
+      - name: 成果物を配置
+        shell: bash
+        run: |
+          mkdir -p npm/linux-x64-gnu npm/darwin-x64 npm/darwin-arm64 npm/win32-x64-msvc npm/win32-arm64-msvc
+          
+          # Linux x64
+          find artifacts -name "electron-pan-clip.linux-x64-gnu.node" -exec cp {} npm/linux-x64-gnu/ \; || echo "Warning: linux-x64-gnu バイナリが見つかりませんでした"
+          
+          # Linux ARM64 - Removed
+          
+          # macOS x64
+          find artifacts -name "electron-pan-clip.darwin-x64.node" -exec cp {} npm/darwin-x64/ \; || echo "Warning: darwin-x64 バイナリが見つかりませんでした"
+          
+          # macOS ARM64
+          find artifacts -name "electron-pan-clip.darwin-arm64.node" -exec cp {} npm/darwin-arm64/ \; || echo "Warning: darwin-arm64 バイナリが見つかりませんでした"
+          
+          # Windows x64
+          find artifacts -name "electron-pan-clip.win32-x64-msvc.node" -exec cp {} npm/win32-x64-msvc/ \; || echo "Warning: win32-x64-msvc バイナリが見つかりませんでした"
+          
+          # Windows ARM64
+          find artifacts -name "electron-pan-clip.win32-arm64-msvc.node" -exec cp {} npm/win32-arm64-msvc/ \; || echo "Warning: win32-arm64-msvc バイナリが見つかりませんでした"
+          
+          # 成果物の確認
+          find npm -type f | sort
+      
+      # バイナリ検証
+      - name: バイナリ検証
+        run: |
+          FOUND_COUNT=$(find npm -type f -name "*.node" | wc -l)
+          echo "見つかったバイナリ数: $FOUND_COUNT"
+          if [ $FOUND_COUNT -eq 0 ]; then
+            echo "エラー: バイナリが1つも見つかりません！"
+            exit 1
+          fi
+          node scripts/verify-binaries.js || {
+            echo "警告: バイナリ検証で一部問題が見つかりました"
+            exit 1
+          } 

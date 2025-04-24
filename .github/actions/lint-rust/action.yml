@@ -32,6 +32,7 @@ runs:
         toolchain: ${{ inputs.toolchain }}
         components: ${{ inputs.components }}
         cache-key: ${{ inputs.cache-key }}
+        install-dependencies: 'true'
         
     - name: Check format
       shell: bash

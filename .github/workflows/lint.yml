@@ -11,8 +11,6 @@ on:
       - "**/*.yml"
       - "!.github/workflows/lint.yml"
   push:
-    branches:
-      - main
     paths-ignore:
       - "**/*.md"
       - "**/*.yml"
@@ -36,6 +34,7 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           toolchain: stable
+          install-dependencies: true
           components: clippy, rustfmt
 
       - name: Run JavaScript lints
