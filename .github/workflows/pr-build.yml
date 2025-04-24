@@ -85,9 +85,21 @@ jobs:
         run: |
           sudo apt-get update -y
           if [[ "${{ matrix.target }}" == "aarch64-unknown-linux-gnu" ]]; then
-            echo "Installing dependencies for ARM64 cross-compilation..."
+            echo "Configuring APT and installing dependencies for ARM64 cross-compilation..."
+            # Add the Ubuntu Ports repository which contains arm64 packages
+            PORTS_LIST=/etc/apt/sources.list.d/ubuntu-ports.list
+            echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble main restricted universe multiverse" | sudo tee $PORTS_LIST
+            echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble-updates main restricted universe multiverse" | sudo tee -a $PORTS_LIST
+            echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble-backports main restricted universe multiverse" | sudo tee -a $PORTS_LIST
+            echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble-security main restricted universe multiverse" | sudo tee -a $PORTS_LIST
+
+            # Add arm64 architecture
             sudo dpkg --add-architecture arm64
+
+            # Update package lists (should now find arm64 packages from ports)
             sudo apt-get update -y
+
+            # Now install the arm64 packages
             sudo apt-get install -y --no-install-recommends \
               gcc-aarch64-linux-gnu \
               g++-aarch64-linux-gnu \
