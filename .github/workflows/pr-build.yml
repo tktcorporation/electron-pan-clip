@@ -110,12 +110,12 @@ jobs:
         run: |
           ARTIFACT_DIR="artifacts/pr-binaries-${{ matrix.name }}"
           mkdir -p "$ARTIFACT_DIR"
-          NODE_FILE=$(find target/${{ matrix.target }}/debug -name "electron-pan-clip.*.node" -print -quit)
+          NODE_FILE=$(find target/${{ matrix.target }}/release -name "electron-pan-clip.*.node" -print -quit)
           if [[ -n "$NODE_FILE" ]]; then
             echo "Copying $NODE_FILE to $ARTIFACT_DIR"
             cp "$NODE_FILE" "$ARTIFACT_DIR/"
           else
-            echo "Error: No .node file found in target/${{ matrix.target }}/debug/"
+            echo "Error: No .node file found in target/${{ matrix.target }}/release/"
             exit 1
           fi
         shell: bash
