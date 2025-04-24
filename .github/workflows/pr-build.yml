@@ -29,10 +29,6 @@ jobs:
             os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             # use-cross: true # Removed
-          - name: linux-arm64-gnu # napi naming convention
-            os: ubuntu-latest
-            target: aarch64-unknown-linux-gnu
-            # use-cross: true # Removed
           - name: darwin-x64 # napi naming convention
             os: macos-latest
             target: x86_64-apple-darwin
@@ -48,6 +44,9 @@ jobs:
             target: x86_64-pc-windows-msvc
             # use-cross: false # Removed
             # setup-script: "" # Removed
+          - name: win32-arm64-msvc # napi naming convention
+            os: windows-latest
+            target: aarch64-pc-windows-msvc
 
     steps:
       - uses: actions/checkout@v3
@@ -68,53 +67,12 @@ jobs:
           node-version: ''
           package-path: '.'
       
-      - name: Dockerセットアップ (Linux QEMU用)
-        # if: ${{ matrix.use-cross }} # Removed, now based on OS
-        if: startsWith(matrix.os, 'ubuntu')
-        uses: docker/setup-buildx-action@v2
-
-      - name: QEMUセットアップ (Linuxのみ)
-        if: startsWith(matrix.os, 'ubuntu')
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: arm64 # Build ARM64 on x64 host
-
       - name: Linux 依存関係のインストールと設定
         if: startsWith(matrix.os, 'ubuntu')
         shell: bash
         run: |
           sudo apt-get update -y
-          if [[ "${{ matrix.target }}" == "aarch64-unknown-linux-gnu" ]]; then
-            echo "Configuring APT and installing dependencies for ARM64 cross-compilation..."
-            # Add the Ubuntu Ports repository which contains arm64 packages
-            PORTS_LIST=/etc/apt/sources.list.d/ubuntu-ports.list
-            echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble main restricted universe multiverse" | sudo tee $PORTS_LIST
-            echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble-updates main restricted universe multiverse" | sudo tee -a $PORTS_LIST
-            echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble-backports main restricted universe multiverse" | sudo tee -a $PORTS_LIST
-            echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble-security main restricted universe multiverse" | sudo tee -a $PORTS_LIST
-
-            # Add arm64 architecture
-            sudo dpkg --add-architecture arm64
-
-            # Update package lists (should now find arm64 packages from ports)
-            sudo apt-get update -y
-
-            # Now install the arm64 packages
-            sudo apt-get install -y --no-install-recommends \
-              gcc-aarch64-linux-gnu \
-              g++-aarch64-linux-gnu \
-              pkg-config-aarch64-linux-gnu \
-              libx11-dev:arm64 \
-              libxtst-dev:arm64 \
-              libdbus-1-dev:arm64 # electron-rs/cargo-build requires this
-            # Configure pkg-config for cross-compilation
-            export PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig
-            export PKG_CONFIG_ALLOW_CROSS=1
-            export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
-            echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> $GITHUB_ENV
-            echo "PKG_CONFIG_ALLOW_CROSS=1" >> $GITHUB_ENV
-            echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
-          elif [[ "${{ matrix.target }}" == "x86_64-unknown-linux-gnu" ]]; then
+          if [[ "${{ matrix.target }}" == "x86_64-unknown-linux-gnu" ]]; then
             echo "Installing dependencies for x86_64 native compilation..."
             sudo apt-get install -y --no-install-recommends \
               pkg-config \
@@ -250,13 +208,13 @@ jobs:
       - name: 成果物を配置
         shell: bash
         run: |
-          mkdir -p npm/linux-x64-gnu npm/linux-arm64-gnu npm/darwin-x64 npm/darwin-arm64 npm/win32-x64-msvc
+          mkdir -p npm/linux-x64-gnu npm/darwin-x64 npm/darwin-arm64 npm/win32-x64-msvc npm/win32-arm64-msvc
           
           # Linux x64
           find artifacts -name "electron-pan-clip.linux-x64-gnu.node" -exec cp {} npm/linux-x64-gnu/ \; || echo "Warning: linux-x64-gnu バイナリが見つかりませんでした"
           
-          # Linux ARM64
-          find artifacts -name "electron-pan-clip.linux-arm64-gnu.node" -exec cp {} npm/linux-arm64-gnu/ \; || echo "Warning: linux-arm64-gnu バイナリが見つかりませんでした"
+          # Linux ARM64 - Removed
+          # find artifacts -name "electron-pan-clip.linux-arm64-gnu.node" -exec cp {} npm/linux-arm64-gnu/ \; || echo "Warning: linux-arm64-gnu バイナリが見つかりませんでした"
           
           # macOS x64
           find artifacts -name "electron-pan-clip.darwin-x64.node" -exec cp {} npm/darwin-x64/ \; || echo "Warning: darwin-x64 バイナリが見つかりませんでした"
@@ -266,6 +224,9 @@ jobs:
           
           # Windows x64
           find artifacts -name "electron-pan-clip.win32-x64-msvc.node" -exec cp {} npm/win32-x64-msvc/ \; || echo "Warning: win32-x64-msvc バイナリが見つかりませんでした"
+          
+          # Windows ARM64
+          find artifacts -name "electron-pan-clip.win32-arm64-msvc.node" -exec cp {} npm/win32-arm64-msvc/ \; || echo "Warning: win32-arm64-msvc バイナリが見つかりませんでした"
           
           # 成果物の確認
           find npm -type f | sort
