@@ -110,12 +110,19 @@ jobs:
         run: |
           ARTIFACT_DIR="artifacts/pr-binaries-${{ matrix.name }}"
           mkdir -p "$ARTIFACT_DIR"
+          # Ensure we look in the release directory
           NODE_FILE=$(find target/${{ matrix.target }}/release -name "electron-pan-clip.*.node" -print -quit)
           if [[ -n "$NODE_FILE" ]]; then
             echo "Copying $NODE_FILE to $ARTIFACT_DIR"
+            # NODE_FILE変数を使って直接コピー
             cp "$NODE_FILE" "$ARTIFACT_DIR/"
           else
             echo "Error: No .node file found in target/${{ matrix.target }}/release/"
+            # Add directory listing for debugging
+            echo "Listing contents of target/${{ matrix.target }}/:"
+            ls -la target/${{ matrix.target }}/ || echo "target/${{ matrix.target }}/ not found"
+            echo "Listing contents of target/${{ matrix.target }}/release/ if it exists:"
+            ls -la target/${{ matrix.target }}/release/ || echo "target/${{ matrix.target }}/release/ not found"
             exit 1
           fi
         shell: bash
