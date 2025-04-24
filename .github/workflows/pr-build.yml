@@ -79,7 +79,7 @@ jobs:
       
       - name: Linuxビルド（cross使用）
         if: ${{ matrix.use-cross }}
-        run: cross build --target ${{ matrix.target }}
+        run: cross build --release --target ${{ matrix.target }}
       
       - name: 通常ビルド（cross不使用）
         if: ${{ !matrix.use-cross }}
