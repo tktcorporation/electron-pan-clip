@@ -5,16 +5,14 @@ use std::io::{Error, ErrorKind};
 use std::iter::once;
 use std::mem::{size_of, zeroed};
 use std::os::windows::ffi::OsStrExt;
-use std::ptr::null_mut;
 
 use windows_sys::Win32::{
-  Foundation::{GetLastError, HWND, MAX_PATH},
+  Foundation::{GetLastError, HWND},
   System::{
     DataExchange::{CloseClipboard, EmptyClipboard, OpenClipboard, SetClipboardData},
     Memory::{GlobalAlloc, GlobalFree, GlobalLock, GlobalUnlock, GMEM_MOVEABLE},
-    Ole::CF_HDROP, // 定義は Ole にある
   },
-  UI::Shell::{DROPFILES, HDROP},
+  UI::Shell::{DROPFILES, CF_HDROP},
 };
 
 // ワイド文字列（UTF-16）に変換し、NULL終端を追加するヘルパー関数
@@ -40,7 +38,7 @@ pub fn copy_files_to_clipboard(paths: &[String]) -> Result<(), Error> {
     // 3. グローバルメモリを確保
     // CF_HDROP は GMEM_MOVEABLE である必要がある
     let h_global = GlobalAlloc(GMEM_MOVEABLE, total_size);
-    if h_global == 0 {
+    if h_global == 0 as windows_sys::Win32::Foundation::HANDLE {
       let err = GetLastError();
       return Err(Error::new(
         ErrorKind::Other,
