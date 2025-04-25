@@ -1,12 +1,9 @@
 #![cfg(target_os = "macos")]
 
-use cocoa::appkit::{NSPasteboard, NSPasteboardItem};
+use cocoa::appkit::NSPasteboard;
 use cocoa::base::{id, nil};
 use cocoa::foundation::{NSArray, NSString};
-use core_foundation::base::{kCFAllocatorDefault, TCFType};
-use core_foundation::string::CFString;
-use core_foundation::url::{kCFURLPOSIXPathStyle, CFURLCreateWithFileSystemPath};
-use objc::{msg_send, sel, sel_impl};
+use objc::{class, msg_send, sel, sel_impl};
 use std::io::{Error, ErrorKind};
 use std::path::Path;
 
@@ -39,17 +36,16 @@ pub fn copy_files_to_clipboard(paths: &[String]) -> Result<(), Error> {
         }
       };
 
-      // CoreFoundation の URL オブジェクトを作成
-      let cf_string = CFString::new(path_str);
-      let cf_url = CFURLCreateWithFileSystemPath(
-        kCFAllocatorDefault,
-        cf_string.as_concrete_TypeRef(),
-        kCFURLPOSIXPathStyle,
-        0, // falseではなく0を使用
-      );
+      // NSString としてパスを作成
+      let ns_string = NSString::alloc(nil).init_str(path_str);
 
-      // CF_URL を NSURL に変換
-      let nsurl: id = msg_send![cf_url, autorelease];
+      // NSURL を直接作成する
+      #[allow(unexpected_cfgs)]
+      let url_class = class!(NSURL);
+
+      #[allow(unexpected_cfgs)]
+      let nsurl: id = msg_send![url_class, fileURLWithPath:ns_string];
+
       if nsurl != nil {
         urls.push(nsurl);
       } else {
@@ -68,10 +64,9 @@ pub fn copy_files_to_clipboard(paths: &[String]) -> Result<(), Error> {
     let urls_array = NSArray::arrayWithObjects(nil, &urls);
 
     // クリップボードにファイルURLの配列を書き込み
-    let file_url_type = NSString::alloc(nil).init_str("public.file-url");
-    let success: i8 = pasteboard.writeObjects(urls_array);
+    let success: bool = pasteboard.writeObjects(urls_array);
 
-    if success != 0 {
+    if success {
       println!("Copied files to clipboard on macOS: {:?}", paths);
       Ok(())
     } else {
