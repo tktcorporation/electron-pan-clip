@@ -44,6 +44,22 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      # macOSでのクロスコンパイル設定を確認
+      - name: macOSクロスコンパイル環境確認
+        if: startsWith(matrix.os, 'macos')
+        shell: bash
+        run: |
+          echo "macOS アーキテクチャ: $(uname -m)"
+          echo "Xcode情報:"
+          xcodebuild -version
+          xcrun --show-sdk-path
+          echo "ターゲット: ${{ matrix.target }}"
+          
+          if [[ "${{ matrix.target }}" == "x86_64-apple-darwin" && "$(uname -m)" == "arm64" ]]; then
+            echo "ARM64からx86_64へのクロスコンパイル設定が必要です"
+            xcrun --find clang
+          fi
+
       # Use the new composite action for building
       - name: Build Native Module
         uses: ./.github/actions/build-native-module

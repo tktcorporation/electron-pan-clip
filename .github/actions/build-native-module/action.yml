@@ -58,13 +58,23 @@ runs:
       run: |
         set -ex
         echo "Running napi build for target: ${{ inputs.target }}"
-        # Set environment variables for cross-compilation if necessary (though napi might handle it)
-        # Example for Linux cross-compilation (adjust linker/compiler if needed):
+        # Set environment variables for cross-compilation if necessary
+        
+        # macOS ARM64からx86_64へのクロスコンパイル設定
+        if [[ "${{ inputs.os }}" == "macos-latest" && "${{ inputs.target }}" == "x86_64-apple-darwin" && "$(uname -m)" == "arm64" ]]; then
+          echo "Setting up cross-compilation from ARM64 to x86_64 on macOS..."
+          export CARGO_TARGET_X86_64_APPLE_DARWIN_LINKER="$(xcrun --find clang)"
+          export SDKROOT=$(xcrun --sdk macosx --show-sdk-path)
+          export MACOSX_DEPLOYMENT_TARGET=$(xcrun --sdk macosx --show-sdk-platform-version)
+        fi
+        
+        # Linux cross-compilation settings (existing commented code)
         # if [[ "${{ inputs.target }}" == "aarch64-unknown-linux-gnu" ]]; then
         #   export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
         #   export CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc
         #   export CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++
         # fi
+        
         napi build --platform --release --target ${{ inputs.target }}
 
     - name: 成果物移動 (.node)
