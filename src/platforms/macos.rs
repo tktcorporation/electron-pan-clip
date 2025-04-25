@@ -64,7 +64,8 @@ pub fn copy_files_to_clipboard(paths: &[String]) -> Result<(), Error> {
     let urls_array = NSArray::arrayWithObjects(nil, &urls);
 
     // クリップボードにファイルURLの配列を書き込み
-    let success: bool = pasteboard.writeObjects(urls_array);
+    let success_i8: i8 = pasteboard.writeObjects(urls_array);
+    let success = success_i8 != 0;
 
     if success {
       println!("Copied files to clipboard on macOS: {:?}", paths);
