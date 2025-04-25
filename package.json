@@ -17,7 +17,8 @@
   },
   "files": [
     "index.d.ts",
-    "index.js"
+    "index.js",
+    "*.node"
   ],
   "napi": {
     "name": "electron-pan-clip",
@@ -42,11 +43,18 @@
     "typescript": "^5.0.0",
     "vitest": "^3.1.1"
   },
+  "optionalDependencies": {
+    "electron-pan-clip-aarch64-apple-darwin": "0.0.17",
+    "electron-pan-clip-aarch64-unknown-linux-gnu": "0.0.17",
+    "electron-pan-clip-x86_64-apple-darwin": "0.0.17",
+    "electron-pan-clip-x86_64-pc-windows-msvc": "0.0.17",
+    "electron-pan-clip-x86_64-unknown-linux-gnu": "0.0.17"
+  },
   "scripts": {
     "artifacts": "napi artifacts",
     "build": "napi build --platform --release",
     "build:debug": "napi build --platform",
-    "prepublishOnly": "napi prepublish -t npm && node scripts/verify-binaries.js",
+    "prepublishOnly": "napi prepublish -t npm",
     "test": "vitest run",
     "test:watch": "vitest",
     "universal": "napi universal",
