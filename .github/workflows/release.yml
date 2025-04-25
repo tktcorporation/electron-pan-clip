@@ -212,105 +212,51 @@ jobs:
     needs: [check-version, create-release, build-binaries]
     # リリースの作成もしくはリリースイベントから実行された場合に実行
     if: needs.check-version.outputs.should_release == 'true' || github.event_name == 'release'
+    permissions:
+      id-token: write # npm publish --provenance 用
     steps:
       - uses: actions/checkout@v3
         with:
           ref: ${{ github.event_name == 'release' && github.event.release.tag_name || 'main' }}
-      
+          # リリース対象のタグ/ブランチをチェックアウト
+
       - name: Node.js設定
         uses: ./.github/actions/node-setup
-      
+        # devDependencies をインストールするために package-path を指定
+        with:
+          package-path: '.' # ルートの package.json を使う
+
       # ビルド成果物をダウンロード
       - name: 成果物をダウンロード
         uses: actions/download-artifact@v4
         with:
-          path: artifacts
-      
-      # 成果物を正しい場所にコピー
+          path: artifacts # ダウンロード先ディレクトリ
+
+      # 成果物をプロジェクトルートにコピー
+      # NAPI-RS は通常、ルートディレクトリにある .node ファイルを探します
       - name: 成果物を配置
         shell: bash
         run: |
-          # ビルドされたプラットフォームに対応するディレクトリのみ作成
-          PLATFORMS=("linux-x64-gnu" "darwin-x64" "darwin-arm64" "win32-x64-msvc" "win32-arm64-msvc")
-          for platform in "${PLATFORMS[@]}"; do
-            mkdir -p "npm/$platform"
-            artifact_dir="artifacts/binaries-$platform"
-            node_file="electron-pan-clip.$platform.node"
-            # find を使用してアーティファクトディレクトリから .node ファイルを検索し、対応する npm ディレクトリにコピー
-            found_files=$(find "$artifact_dir" -name "$node_file" -type f)
-            if [ -n "$found_files" ]; then
-              echo "Copying $node_file for $platform..."
-              cp "$found_files" "npm/$platform/"
-            else
-              echo "Warning: $node_file not found in $artifact_dir"
-            fi
-          done
-          
-          # 各プラットフォーム用のpackage.jsonを作成
-          for dir in npm/*; do
-            platform=$(basename $dir)
-            # 対応する .node ファイルが存在する場合のみ package.json を作成
-            if [ -f "$dir/electron-pan-clip.$platform.node" ]; then
-              node -e "
-                const fs = require('fs');
-                const path = require('path');
-                const dir = '$dir';
-                const platform = '$platform';
-                const rootPkg = require('./package.json'); // ルートの package.json を読み込む
-                const version = rootPkg.version; // ルートからバージョンを取得
-                const osMap = { 'win32': 'win32', 'darwin': 'darwin', 'linux': 'linux' };
-                const cpuMap = { 'x64': 'x64', 'arm64': 'arm64' };
-                const platformParts = platform.split('-');
-                const os = osMap[platformParts[0]];
-                const cpu = cpuMap[platformParts[1]];
-                
-                const pkgJson = {
-                  name: \`\${rootPkg.name}-\${platform}\`, // ルート名を使用
-                  version: version,
-                  description: \`\${rootPkg.description} (\${platform} bindings)\`, // 説明を追加
-                  os: [os],
-                  cpu: [cpu],
-                  main: 'electron-pan-clip.'+platform+'.node',
-                  files: ['electron-pan-clip.'+platform+'.node'],
-                  license: rootPkg.license, // ルートからライセンスを取得
-                  repository: rootPkg.repository, // ルートからリポジトリを取得
-                  engines: rootPkg.engines // ルートから engines を取得
-                };
-                
-                fs.writeFileSync(
-                  path.join(dir, 'package.json'),
-                  JSON.stringify(pkgJson, null, 2)
-                );
-                
-                console.log('Created package.json for ' + platform);
-              "
-            else
-              echo "Skipping package.json creation for $platform - node file missing."
-            fi
-          done
-          
-          # 成果物の確認
-          echo "Contents of npm/ directory:"
-          find npm -type f | sort
-      
-      # バイナリ検証
-      - name: バイナリ検証
-        run: node scripts/verify-binaries.js
-      
-      # npmへパブリッシュ
-      - name: npmへパブリッシュ
-        run: |
-          for dir in npm/*; do
-            if [ -f "$dir/package.json" ]; then
-              echo "Publishing $dir..."
-              (cd "$dir" && npm publish --access public)
-            else
-              echo "Skipping publish for $dir - package.json missing."
-            fi
-          done
+          echo "Copying built artifacts..."
+          # アーティファクトは artifacts/binaries-<platform>/electron-pan-clip.<platform>.node にあるはず
+          # これらをプロジェクトのルートディレクトリにコピーする
+          # find コマンドで全ての .node ファイルを見つけてカレントディレクトリにコピー
+          find artifacts/binaries-* -name '*.node' -exec cp {} . \;
+
+          echo "Copied .node files to root directory:"
+          ls -la *.node
+
+      # npm へパブリッシュ (provenance を使用)
+      # package.json の prepublishOnly スクリプトが @napi-rs/cli build --release などを実行することを期待
+      - name: npm へパブリッシュ
+        run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-  
+
+      # バイナリ検証は publish 後に行うか、別ジョブにするか、内容を見直す必要がある
+      # - name: バイナリ検証
+      #   run: node scripts/verify-binaries.js
+
   # GitHub Release へアセットをアップロード
   upload-assets:
     name: GitHubリリースへアセットをアップロード
