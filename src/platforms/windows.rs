@@ -12,7 +12,7 @@ use windows_sys::Win32::{
     DataExchange::{CloseClipboard, EmptyClipboard, OpenClipboard, SetClipboardData},
     Memory::{GlobalAlloc, GlobalFree, GlobalLock, GlobalUnlock, GMEM_MOVEABLE},
   },
-  UI::Shell::{DROPFILES, CF_HDROP},
+  UI::Shell::{CF_HDROP, DROPFILES},
 };
 
 // ワイド文字列（UTF-16）に変換し、NULL終端を追加するヘルパー関数
