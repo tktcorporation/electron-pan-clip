@@ -4,34 +4,36 @@
 extern crate napi_derive;
 
 // OS別の実装モジュール
-#[cfg(target_os = "windows")]
-mod platforms {
-  pub mod windows;
-}
-
-#[cfg(target_os = "macos")]
-mod platforms {
-  pub mod macos;
-}
-
-#[cfg(target_os = "linux")]
-mod platforms {
-  pub mod linux;
-}
+mod platforms;
 
 #[cfg(target_os = "windows")]
-use platforms::windows;
+use platforms::windows as current_platform;
 
 #[cfg(target_os = "macos")]
-use platforms::macos;
+use platforms::macos as current_platform;
 
 #[cfg(target_os = "linux")]
-use platforms::linux;
+use platforms::linux as current_platform;
 
 /// Hello World関数 - 動作確認用
 #[napi]
 pub fn hello_world() -> String {
-  "Hello from Rust!".to_string()
+  #[cfg(target_os = "windows")]
+  {
+    "Hello from Rust on Windows!".to_string()
+  }
+  #[cfg(target_os = "macos")]
+  {
+    "Hello from Rust on macOS!".to_string()
+  }
+  #[cfg(target_os = "linux")]
+  {
+    "Hello from Rust on Linux!".to_string()
+  }
+  #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
+  {
+    "Hello from Rust on an unknown OS!".to_string()
+  }
 }
 
 /// 複数ファイルをクリップボードにコピーする
@@ -41,22 +43,11 @@ pub fn copy_files(paths: Vec<String>) -> napi::Result<()> {
     return Err(napi::Error::from_reason("No file paths provided"));
   }
 
-  #[cfg(target_os = "windows")]
+  #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
   {
-    windows::copy_files_to_clipboard(&paths)
-      .map_err(|e| napi::Error::from_reason(format!("Windows clipboard error: {}", e)))?;
-  }
-
-  #[cfg(target_os = "macos")]
-  {
-    macos::copy_files_to_clipboard(&paths)
-      .map_err(|e| napi::Error::from_reason(format!("macOS clipboard error: {}", e)))?;
-  }
-
-  #[cfg(target_os = "linux")]
-  {
-    linux::copy_files_to_clipboard(&paths)
-      .map_err(|e| napi::Error::from_reason(format!("Linux clipboard error: {}", e)))?;
+    current_platform::copy_files_to_clipboard(&paths).map_err(|e| {
+      napi::Error::from_reason(format!("{} clipboard error: {}", std::env::consts::OS, e))
+    })?;
   }
 
   #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
@@ -65,4 +56,69 @@ pub fn copy_files(paths: Vec<String>) -> napi::Result<()> {
   }
 
   Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  use std::env::temp_dir;
+  use std::fs::File;
+  use std::io::Write;
+
+  // hello_world関数のテスト
+  #[test]
+  fn test_hello_world() {
+    let result = hello_world();
+    // OSによって出力が異なるため、特定の文字列は検証せず
+    // 空でないことだけ確認する
+    assert!(!result.is_empty());
+    assert!(result.contains("Rust"));
+  }
+
+  // 空の入力に対するエラーテスト
+  #[test]
+  fn test_copy_files_empty_input() {
+    let result = copy_files(vec![]);
+    assert!(result.is_err());
+    if let Err(err) = result {
+      assert!(err.reason.contains("No file paths provided"));
+    }
+  }
+
+  // 実際のファイルを作成してコピーするテスト
+  // 注意: このテストは実際のクリップボードを変更します
+  #[test]
+  #[ignore] // 通常のCIでは実行しないよう無視フラグを付ける
+  fn test_copy_real_files() {
+    // テスト用の一時ファイルを作成
+    let mut temp_files = Vec::new();
+
+    for i in 0..2 {
+      let mut path = temp_dir();
+      path.push(format!("electron_pan_clip_test_{}.txt", i));
+
+      let file_path = path.to_string_lossy().to_string();
+
+      // ファイルを作成して何か書き込む
+      let mut file = File::create(&path).expect("Failed to create test file");
+      writeln!(file, "Test content {}", i).expect("Failed to write to test file");
+
+      temp_files.push(file_path);
+    }
+
+    // ファイルをクリップボードにコピー
+    let result = copy_files(temp_files.clone());
+
+    // コピー成功を確認
+    assert!(result.is_ok(), "Failed to copy files: {:?}", result);
+
+    // ここではクリップボードの内容を自動的に検証することは難しいため、
+    // 成功したことだけを確認する
+
+    // テスト後にファイルを削除
+    for path in temp_files {
+      let _ = std::fs::remove_file(path); // エラーは無視
+    }
+  }
 }

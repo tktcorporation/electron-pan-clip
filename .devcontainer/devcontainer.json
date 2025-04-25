@@ -44,5 +44,13 @@
   "runArgs": [
     "--env-file", ".devcontainer/.env"
   ],
-  "postCreateCommand": "sudo chown -R $USER:$GROUP $CARGO_HOME && just init"
+  "postCreateCommand": "sudo chown -R $USER:$GROUP $CARGO_HOME && just init",
+  
+  // X11サーバーサポートのための設定を追加
+  "remoteEnv": {
+    "DISPLAY": "${localEnv:DISPLAY}"
+  },
+  "mounts": [
+    "source=/tmp/.X11-unix,target=/tmp/.X11-unix,type=bind,consistency=cached"
+  ]
 } 
