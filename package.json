@@ -3,6 +3,18 @@
   "version": "0.0.17",
   "main": "index.js",
   "types": "index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tktcorporation/electron-pan-clip.git"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">= 22"
+  },
   "files": [
     "index.d.ts",
     "index.js"
@@ -20,11 +32,6 @@
       ]
     }
   },
-  "publishConfig": {
-    "registry": "https://registry.npmjs.org/",
-    "access": "public"
-  },
-  "license": "MIT",
   "devDependencies": {
     "@biomejs/biome": "^1.5.3",
     "@napi-rs/cli": "^2.18.4",
@@ -34,9 +41,6 @@
     "taffydb": "^2.7.3",
     "typescript": "^5.0.0",
     "vitest": "^3.1.1"
-  },
-  "engines": {
-    "node": ">= 22"
   },
   "scripts": {
     "artifacts": "napi artifacts",

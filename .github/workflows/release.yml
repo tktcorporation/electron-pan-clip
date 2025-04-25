@@ -230,51 +230,51 @@ jobs:
       - name: 成果物を配置
         shell: bash
         run: |
-          mkdir -p npm/linux-x64-gnu npm/darwin-x64 npm/darwin-arm64 npm/win32-x64-msvc npm/win32-arm64-msvc
-          
-          # Linux x64
-          find artifacts/binaries-linux-x64-gnu -name "electron-pan-clip.linux-x64-gnu.node" -exec cp {} npm/linux-x64-gnu/ \;
-          
-          # macOS x64
-          find artifacts/binaries-darwin-x64 -name "electron-pan-clip.darwin-x64.node" -exec cp {} npm/darwin-x64/ \;
-          
-          # macOS ARM64
-          find artifacts/binaries-darwin-arm64 -name "electron-pan-clip.darwin-arm64.node" -exec cp {} npm/darwin-arm64/ \;
-          
-          # Windows x64
-          find artifacts/binaries-win32-x64-msvc -name "electron-pan-clip.win32-x64-msvc.node" -exec cp {} npm/win32-x64-msvc/ \;
-          
-          # Windows ARM64
-          find artifacts/binaries-win32-arm64-msvc -name "electron-pan-clip.win32-arm64-msvc.node" -exec cp {} npm/win32-arm64-msvc/ \;
+          # ビルドされたプラットフォームに対応するディレクトリのみ作成
+          PLATFORMS=("linux-x64-gnu" "darwin-x64" "darwin-arm64" "win32-x64-msvc" "win32-arm64-msvc")
+          for platform in "${PLATFORMS[@]}"; do
+            mkdir -p "npm/$platform"
+            artifact_dir="artifacts/binaries-$platform"
+            node_file="electron-pan-clip.$platform.node"
+            # find を使用してアーティファクトディレクトリから .node ファイルを検索し、対応する npm ディレクトリにコピー
+            found_files=$(find "$artifact_dir" -name "$node_file" -type f)
+            if [ -n "$found_files" ]; then
+              echo "Copying $node_file for $platform..."
+              cp "$found_files" "npm/$platform/"
+            else
+              echo "Warning: $node_file not found in $artifact_dir"
+            fi
+          done
           
           # 各プラットフォーム用のpackage.jsonを作成
           for dir in npm/*; do
             platform=$(basename $dir)
+            # 対応する .node ファイルが存在する場合のみ package.json を作成
             if [ -f "$dir/electron-pan-clip.$platform.node" ]; then
               node -e "
                 const fs = require('fs');
                 const path = require('path');
                 const dir = '$dir';
                 const platform = '$platform';
-                const version = require('./package.json').version;
-                const os = platform.split('-')[0];
-                const cpu = platform.split('-')[1];
+                const rootPkg = require('./package.json'); // ルートの package.json を読み込む
+                const version = rootPkg.version; // ルートからバージョンを取得
+                const osMap = { 'win32': 'win32', 'darwin': 'darwin', 'linux': 'linux' };
+                const cpuMap = { 'x64': 'x64', 'arm64': 'arm64' };
+                const platformParts = platform.split('-');
+                const os = osMap[platformParts[0]];
+                const cpu = cpuMap[platformParts[1]];
                 
                 const pkgJson = {
-                  name: 'electron-pan-clip-'+platform,
+                  name: \`\${rootPkg.name}-\${platform}\`, // ルート名を使用
                   version: version,
+                  description: \`\${rootPkg.description} (\${platform} bindings)\`, // 説明を追加
                   os: [os],
                   cpu: [cpu],
                   main: 'electron-pan-clip.'+platform+'.node',
                   files: ['electron-pan-clip.'+platform+'.node'],
-                  license: 'MIT',
-                  repository: {
-                    type: 'git',
-                    url: 'git+https://github.com/tktcorporation/electron-pan-clip.git'
-                  },
-                  engines: {
-                    node: '>= 22'
-                  }
+                  license: rootPkg.license, // ルートからライセンスを取得
+                  repository: rootPkg.repository, // ルートからリポジトリを取得
+                  engines: rootPkg.engines // ルートから engines を取得
                 };
                 
                 fs.writeFileSync(
@@ -284,10 +284,13 @@ jobs:
                 
                 console.log('Created package.json for ' + platform);
               "
+            else
+              echo "Skipping package.json creation for $platform - node file missing."
             fi
           done
           
           # 成果物の確認
+          echo "Contents of npm/ directory:"
           find npm -type f | sort
       
       # バイナリ検証
@@ -297,11 +300,43 @@ jobs:
       # npmへパブリッシュ
       - name: npmへパブリッシュ
         run: |
-          npm config set provenance true
-          npm publish --access public
+          for dir in npm/*; do
+            if [ -f "$dir/package.json" ]; then
+              echo "Publishing $dir..."
+              (cd "$dir" && npm publish --access public)
+            else
+              echo "Skipping publish for $dir - package.json missing."
+            fi
+          done
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
   
+  # GitHub Release へアセットをアップロード
+  upload-assets:
+    name: GitHubリリースへアセットをアップロード
+    needs: [check-version, create-release, build-binaries, prepare-release]
+    # リリース準備が完了した場合のみ実行
+    if: needs.check-version.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: 成果物をダウンロード
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: アセットをアップロード
+        uses: softprops/action-gh-release@v1 # Use the same action for uploading
+        with:
+          tag_name: v${{ needs.prepare-release.outputs.version }} # Use version directly from prepare-release
+          files: |
+            artifacts/binaries-linux-x64-gnu/*.node
+            artifacts/binaries-darwin-x64/*.node
+            artifacts/binaries-darwin-arm64/*.node
+            artifacts/binaries-win32-x64-msvc/*.node
+            artifacts/binaries-win32-arm64-msvc/*.node
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   # スモークテスト
   smoke-test:
     name: スモークテスト (${{ matrix.os }})
