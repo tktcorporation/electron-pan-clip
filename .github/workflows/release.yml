@@ -174,36 +174,6 @@ jobs:
           target: ${{ matrix.target }}
           artifact-name-prefix: 'binaries' # Specify the prefix for release artifacts
 
-      # アーカイブしてパーミッション損失を防ぐ
-      - name: Archive Binary (Windows)
-        if: runner.os == 'Windows'
-        shell: bash
-        run: |
-          ARTIFACT_NAME="electron-pan-clip.${{ matrix.name }}.node"
-          ARCHIVE_NAME="binaries-${{ matrix.name }}.zip"
-          # 7z を使用 (GitHub Actions Windows runner にはプリインストールされている)
-          7z a $ARCHIVE_NAME $ARTIFACT_NAME
-          echo "Created archive: $ARCHIVE_NAME containing $ARTIFACT_NAME"
-
-      - name: Archive Binary (Linux/macOS)
-        if: runner.os != 'Windows'
-        shell: bash
-        run: |
-          ARTIFACT_NAME="electron-pan-clip.${{ matrix.name }}.node"
-          ARCHIVE_NAME="binaries-${{ matrix.name }}.tar.gz"
-          tar czf $ARCHIVE_NAME $ARTIFACT_NAME
-          echo "Created archive: $ARCHIVE_NAME containing $ARTIFACT_NAME"
-
-      # Upload the ARCHIVED binary
-      - name: Upload Binary Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: binaries-${{ matrix.name }} # Use the consistent artifact name
-          path: |
-            *.tar.gz
-            *.zip
-          if-no-files-found: error
-
   # GitHub Releaseを作成
   create-release:
     name: GitHubリリース作成
@@ -262,30 +232,16 @@ jobs:
         with:
           path: artifacts # ダウンロード先ディレクトリ
 
-      # アーカイブを展開
-      - name: Extract Archives
-        shell: bash
-        run: |
-          echo "Extracting downloaded artifacts..."
-          # find で全てのアーカイブを見つけて展開
-          # zip ファイルを展開
-          find artifacts -name '*.zip' -execdir unzip -o {} \;
-          # tar.gz ファイルを展開
-          find artifacts -name '*.tar.gz' -exec tar xzf {} -C $(dirname {}) \;
-          echo "Extraction complete."
-          echo "Files in artifacts directory after extraction:"
-          find artifacts -type f
-
       # 成果物をプロジェクトルートにコピー
       # NAPI-RS は通常、ルートディレクトリにある .node ファイルを探します
       - name: 成果物を配置
         shell: bash
         run: |
-          echo "Copying built artifacts to root..."
-          # アーティファクトは artifacts/binaries-<platform>/electron-pan-clip.<platform>.node に展開されているはず
+          echo "Copying built artifacts..."
+          # アーティファクトは artifacts/binaries-<platform>/electron-pan-clip.<platform>.node にあるはず
           # これらをプロジェクトのルートディレクトリにコピーする
           # find コマンドで全ての .node ファイルを見つけてカレントディレクトリにコピー
-          find artifacts -name '*.node' -exec cp {} . \;
+          find artifacts/binaries-* -name '*.node' -exec cp {} . \;
 
           echo "Copied .node files to root directory:"
           ls -la *.node
@@ -319,8 +275,11 @@ jobs:
         with:
           tag_name: v${{ needs.prepare-release.outputs.version }} # Use version directly from prepare-release
           files: |
-            artifacts/binaries-*/*.tar.gz
-            artifacts/binaries-*/*.zip
+            artifacts/binaries-linux-x64-gnu/*.node
+            artifacts/binaries-darwin-x64/*.node
+            artifacts/binaries-darwin-arm64/*.node
+            artifacts/binaries-win32-x64-msvc/*.node
+            artifacts/binaries-win32-arm64-msvc/*.node
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
