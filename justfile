@@ -140,9 +140,32 @@ doc:
 install-linux-deps:
   @echo "📦 Linux依存関係をインストール中..."
   sudo apt-get update
-  sudo apt-get install -y libx11-dev libxext-dev libxrender-dev libxtst-dev libxinerama-dev
+  sudo apt-get install -y libx11-dev libxext-dev libxrender-dev libxtst-dev libxinerama-dev xvfb x11-apps libxcb1-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev
 
 # Linuxの依存関係をインストール（何もしない、Windowsの場合）
 [windows]
 install-linux-deps:
-  @echo "📦 Windows環境では不要なため、何もしません" 
+  @echo "📦 Windows環境では不要なため、何もしません"
+
+# Xvfbを使用してテストを実行（Linux環境用）
+[unix]
+test-with-xvfb:
+  @echo "🧪 Xvfbを使用してテストを実行中..."
+  ./scripts/run-with-xvfb.sh cargo test 
+
+# Windowsクロスコンパイル環境のセットアップ
+[unix]
+setup-windows-cross:
+  @echo "🪟 Windowsクロスコンパイル環境をセットアップ中..."
+  cargo install cargo-xwin
+  rustup target add x86_64-pc-windows-msvc
+  @echo "✅ Windowsクロスコンパイル環境のセットアップが完了しました"
+
+# Windows向けのクロスコンパイルビルド
+[unix]
+build-windows:
+  @echo "🏗️ Windows向けにクロスコンパイル中..."
+  cargo xwin build --release --target x86_64-pc-windows-msvc
+  # または napi-rs を使用する場合
+  # napi build --platform --release --target x86_64-pc-windows-msvc
+  @echo "✅ Windows向けビルドが完了しました" 

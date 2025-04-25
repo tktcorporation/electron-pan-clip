@@ -6,6 +6,10 @@
     "ghcr.io/devcontainers/features/node:1": {
       "version": "22"
     },
+    // add `zig` for building napi-rs
+    "ghcr.io/devcontainers-extra/features/zig:1": {
+      "version": "latest"
+    },
     // add `docker-in-docker` for running docker commands
     "ghcr.io/devcontainers/features/docker-in-docker:2": {
 			"version": "latest",
@@ -44,5 +48,10 @@
   "runArgs": [
     "--env-file", ".devcontainer/.env"
   ],
-  "postCreateCommand": "sudo chown -R $USER:$GROUP $CARGO_HOME && just init"
+  "postCreateCommand": "sudo chown -R $USER:$GROUP $CARGO_HOME && just init",
+  
+  // X11サーバーサポートのための設定
+  "remoteEnv": {
+    "DISPLAY": "${localEnv:DISPLAY}"
+  }
 } 
