@@ -1,18 +1,19 @@
 #![cfg(target_os = "macos")]
 
-use cocoa::appkit::{NSPasteboard, NSPasteboardTypeFileURL};
+use cocoa::appkit::{NSPasteboard, NSPasteboardItem};
 use cocoa::base::{id, nil};
-use cocoa::foundation::{NSArray, NSString, NSURL};
-use core_foundation::base::TCFType;
-use core_foundation::string::{CFString, CFStringRef};
-use core_foundation::url::CFURLCreateWithFileSystemPath;
+use cocoa::foundation::{NSArray, NSString};
+use core_foundation::base::{kCFAllocatorDefault, TCFType};
+use core_foundation::string::CFString;
+use core_foundation::url::{kCFURLPOSIXPathStyle, CFURLCreateWithFileSystemPath};
+use objc::{msg_send, sel, sel_impl};
 use std::io::{Error, ErrorKind};
 use std::path::Path;
 
 pub fn copy_files_to_clipboard(paths: &[String]) -> Result<(), Error> {
   // NSPasteboard の取得
   unsafe {
-    let pasteboard = NSPasteboard::generalPasteboard();
+    let pasteboard = NSPasteboard::generalPasteboard(nil);
 
     // 既存のデータをクリア
     pasteboard.clearContents();
@@ -41,10 +42,10 @@ pub fn copy_files_to_clipboard(paths: &[String]) -> Result<(), Error> {
       // CoreFoundation の URL オブジェクトを作成
       let cf_string = CFString::new(path_str);
       let cf_url = CFURLCreateWithFileSystemPath(
-        core_foundation::base::kCFAllocatorDefault,
+        kCFAllocatorDefault,
         cf_string.as_concrete_TypeRef(),
-        core_foundation::url::kCFURLPOSIXPathStyle,
-        false,
+        kCFURLPOSIXPathStyle,
+        0, // falseではなく0を使用
       );
 
       // CF_URL を NSURL に変換
@@ -67,10 +68,10 @@ pub fn copy_files_to_clipboard(paths: &[String]) -> Result<(), Error> {
     let urls_array = NSArray::arrayWithObjects(nil, &urls);
 
     // クリップボードにファイルURLの配列を書き込み
-    let file_url_type = NSString::alloc(nil).init_str(NSPasteboardTypeFileURL);
-    let success = pasteboard.writeObjects(urls_array);
+    let file_url_type = NSString::alloc(nil).init_str("public.file-url");
+    let success: i8 = pasteboard.writeObjects(urls_array);
 
-    if success {
+    if success != 0 {
       println!("Copied files to clipboard on macOS: {:?}", paths);
       Ok(())
     } else {
