@@ -134,18 +134,25 @@ jobs:
           echo "Files in root directory after copy:"
           ls -la *.node
 
-          # 成果物の確認 (Optional: verify script handles this)
-          # find npm -type f | sort
+          # npmディレクトリに.nodeファイルをコピー
+          echo "Copying .node files to npm directory..."
+          mkdir -p npm
+          find . -maxdepth 1 -name "*.node" -exec cp {} npm/ \;
+          echo "Files in npm directory after copy:"
+          ls -la npm/*.node || echo "No files found in npm directory"
       
       # バイナリ検証
       - name: バイナリ検証
         run: |
-          FOUND_COUNT=$(find npm -type f -name "*.node" | wc -l)
+          echo "見つかった.nodeファイルの一覧:"
+          find . -type f -name "*.node" | tee found_binaries.txt
+          FOUND_COUNT=$(cat found_binaries.txt | wc -l)
           echo "見つかったバイナリ数: $FOUND_COUNT"
           if [ $FOUND_COUNT -eq 0 ]; then
             echo "エラー: バイナリが1つも見つかりません！"
             exit 1
           fi
+          echo "検証を実行します..."
           node scripts/verify-binaries.js || {
             echo "警告: バイナリ検証で一部問題が見つかりました"
             exit 1
