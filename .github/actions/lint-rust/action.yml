@@ -26,6 +26,12 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: 実行情報の初期化
+      shell: bash
+      run: |
+        echo "ACTION_SUMMARY=[]" >> $GITHUB_ENV
+        echo "LINT_RESULTS=[]" >> $GITHUB_ENV
+
     - name: Setup Rust環境
       uses: ./.github/actions/setup-rust
       with:
@@ -36,13 +42,82 @@ runs:
         
     - name: Check format
       shell: bash
-      run: cargo fmt --all -- --check
+      run: |
+        set +e
+        cargo fmt --all -- --check
+        FMT_EXIT_CODE=$?
+        set -e
+        
+        if [ $FMT_EXIT_CODE -eq 0 ]; then
+          echo "LINT_RESULTS=$(echo $LINT_RESULTS | jq -c '. += ["✅ Rustfmtチェックに成功しました"]')" >> $GITHUB_ENV
+        else
+          echo "LINT_RESULTS=$(echo $LINT_RESULTS | jq -c '. += ["❌ Rustfmtチェックに失敗しました"]')" >> $GITHUB_ENV
+        fi
+        
+        echo "ACTION_SUMMARY=$(echo $ACTION_SUMMARY | jq -c '. += ["Rustfmtによるコードフォーマットチェックを実行しました"]')" >> $GITHUB_ENV
+        
+        # 元のコマンドのexitコードを返す
+        exit $FMT_EXIT_CODE
         
     - name: Clippy
       shell: bash
-      run: cargo clippy ${{ inputs.clippy-options }}
+      run: |
+        set +e
+        cargo clippy ${{ inputs.clippy-options }} 
+        CLIPPY_EXIT_CODE=$?
+        set -e
+        
+        if [ $CLIPPY_EXIT_CODE -eq 0 ]; then
+          echo "LINT_RESULTS=$(echo $LINT_RESULTS | jq -c '. += ["✅ Clippyチェックに成功しました"]')" >> $GITHUB_ENV
+        else
+          echo "LINT_RESULTS=$(echo $LINT_RESULTS | jq -c '. += ["❌ Clippyチェックに失敗しました"]')" >> $GITHUB_ENV
+        fi
+        
+        echo "ACTION_SUMMARY=$(echo $ACTION_SUMMARY | jq -c '. += ["Clippyによるコード品質チェックを実行しました (オプション: ${{ inputs.clippy-options }})"]')" >> $GITHUB_ENV
+        
+        # 元のコマンドのexitコードを返す
+        exit $CLIPPY_EXIT_CODE
       
     - name: Check documentation
       if: inputs.check-documentation == 'true'
       shell: bash
-      run: RUSTDOCFLAGS='-D warnings' cargo doc --no-deps 
+      run: |
+        set +e
+        RUSTDOCFLAGS='-D warnings' cargo doc --no-deps
+        DOC_EXIT_CODE=$?
+        set -e
+        
+        if [ $DOC_EXIT_CODE -eq 0 ]; then
+          echo "LINT_RESULTS=$(echo $LINT_RESULTS | jq -c '. += ["✅ ドキュメントチェックに成功しました"]')" >> $GITHUB_ENV
+        else
+          echo "LINT_RESULTS=$(echo $LINT_RESULTS | jq -c '. += ["❌ ドキュメントチェックに失敗しました"]')" >> $GITHUB_ENV
+        fi
+        
+        echo "ACTION_SUMMARY=$(echo $ACTION_SUMMARY | jq -c '. += ["Rustドキュメントのチェックを実行しました"]')" >> $GITHUB_ENV
+        
+        # 元のコマンドのexitコードを返す
+        exit $DOC_EXIT_CODE
+    
+    - name: サマリー出力
+      if: always()
+      shell: bash
+      run: |
+        echo "## 🦀 Rustコードのlint サマリー" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📊 実行情報" >> $GITHUB_STEP_SUMMARY
+        echo "- **Rustツールチェーン:** ${{ inputs.toolchain }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **使用コンポーネント:** ${{ inputs.components }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Clippyオプション:** \`${{ inputs.clippy-options }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "- **ドキュメントチェック:** ${{ inputs.check-documentation }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        echo "### 🔧 実行したアクション" >> $GITHUB_STEP_SUMMARY
+        for action in $(echo $ACTION_SUMMARY | jq -r '.[]'); do
+          echo "- $action" >> $GITHUB_STEP_SUMMARY
+        done
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        echo "### 📝 Lint結果" >> $GITHUB_STEP_SUMMARY
+        for result in $(echo $LINT_RESULTS | jq -r '.[]'); do
+          echo "- $result" >> $GITHUB_STEP_SUMMARY
+        done 

@@ -28,18 +28,23 @@ jobs:
           - name: linux-x64-gnu # napi naming convention
             os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
+            arch: x64
           - name: darwin-x64 # napi naming convention
             os: macos-latest
             target: x86_64-apple-darwin
+            arch: x64
           - name: darwin-arm64 # napi naming convention
             os: macos-latest
             target: aarch64-apple-darwin
+            arch: arm64
           - name: win32-x64-msvc # napi naming convention
             os: windows-latest
             target: x86_64-pc-windows-msvc
-          - name: win32-arm64-msvc # napi naming convention
+            arch: x64
+          - name: win32-arm64-msvc
             os: windows-latest
             target: aarch64-pc-windows-msvc
+            arch: arm64
 
     steps:
       - uses: actions/checkout@v3
@@ -67,7 +72,8 @@ jobs:
           name: ${{ matrix.name }}
           os: ${{ matrix.os }}
           target: ${{ matrix.target }}
-          # artifact-name-prefix defaults to 'pr-binaries', which is correct here
+          artifact-name-prefix: 'pr-binaries'
+          arch: ${{ matrix.arch }}
 
       # --- Removed Steps (now inside the composite action) ---
       # - name: Rustツールチェインのセットアップ
@@ -117,42 +123,40 @@ jobs:
         with:
           path: artifacts
           pattern: pr-binaries-*
+          merge-multiple: true
       
       # 成果物を正しい場所にコピー
       - name: 成果物を配置
         shell: bash
         run: |
-          mkdir -p npm/linux-x64-gnu npm/darwin-x64 npm/darwin-arm64 npm/win32-x64-msvc npm/win32-arm64-msvc
-          
-          # Linux x64
-          find artifacts -name "electron-pan-clip.linux-x64-gnu.node" -exec cp {} npm/linux-x64-gnu/ \; || echo "Warning: linux-x64-gnu バイナリが見つかりませんでした"
-          
-          # Linux ARM64 - Removed
-          
-          # macOS x64
-          find artifacts -name "electron-pan-clip.darwin-x64.node" -exec cp {} npm/darwin-x64/ \; || echo "Warning: darwin-x64 バイナリが見つかりませんでした"
-          
-          # macOS ARM64
-          find artifacts -name "electron-pan-clip.darwin-arm64.node" -exec cp {} npm/darwin-arm64/ \; || echo "Warning: darwin-arm64 バイナリが見つかりませんでした"
-          
-          # Windows x64
-          find artifacts -name "electron-pan-clip.win32-x64-msvc.node" -exec cp {} npm/win32-x64-msvc/ \; || echo "Warning: win32-x64-msvc バイナリが見つかりませんでした"
-          
-          # Windows ARM64
-          find artifacts -name "electron-pan-clip.win32-arm64-msvc.node" -exec cp {} npm/win32-arm64-msvc/ \; || echo "Warning: win32-arm64-msvc バイナリが見つかりませんでした"
-          
-          # 成果物の確認
-          find npm -type f | sort
+          echo "Downloaded artifacts contents:"
+          ls -lR artifacts
+          # Copy all found .node files from the downloaded artifacts to the current directory
+          # The verify-binaries.js script should look for them here
+          echo "Copying .node files to root..."
+          find artifacts -name '*.node' -exec cp {} . \;
+          echo "Files in root directory after copy:"
+          ls -la *.node
+
+          # npmディレクトリに.nodeファイルをコピー
+          echo "Copying .node files to npm directory..."
+          mkdir -p npm
+          find . -maxdepth 1 -name "*.node" -exec cp {} npm/ \;
+          echo "Files in npm directory after copy:"
+          ls -la npm/*.node || echo "No files found in npm directory"
       
       # バイナリ検証
       - name: バイナリ検証
         run: |
-          FOUND_COUNT=$(find npm -type f -name "*.node" | wc -l)
+          echo "見つかった.nodeファイルの一覧:"
+          find . -type f -name "*.node" | tee found_binaries.txt
+          FOUND_COUNT=$(cat found_binaries.txt | wc -l)
           echo "見つかったバイナリ数: $FOUND_COUNT"
           if [ $FOUND_COUNT -eq 0 ]; then
             echo "エラー: バイナリが1つも見つかりません！"
             exit 1
           fi
+          echo "検証を実行します..."
           node scripts/verify-binaries.js || {
             echo "警告: バイナリ検証で一部問題が見つかりました"
             exit 1

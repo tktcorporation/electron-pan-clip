@@ -136,43 +136,49 @@ jobs:
   
   # 各プラットフォーム向けのバイナリをビルド
   build-binaries:
-    name: バイナリビルド (${{ matrix.name }})
+    name: バイナリビルド (${{ matrix.os }}-${{ matrix.arch }}) # Use matrix.arch in name
     needs: [check-version, prepare-release]
     if: needs.check-version.outputs.should_release == 'true' || github.event_name == 'release'
     strategy:
-      fail-fast: false  # 一つのビルドが失敗しても他を続行
+      fail-fast: false
       matrix:
         include:
-          - name: linux-x64-gnu # napi naming convention to match pr-build
+          - name: linux-x64-gnu # Naming convention for package/artifact
             os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-          - name: darwin-x64 # napi naming convention
+            arch: x64
+          - name: darwin-x64
             os: macos-latest
             target: x86_64-apple-darwin
-          - name: darwin-arm64 # napi naming convention
+            arch: x64
+          - name: darwin-arm64
             os: macos-latest
             target: aarch64-apple-darwin
-          - name: win32-x64-msvc # napi naming convention
+            arch: arm64
+          - name: win32-x64-msvc
             os: windows-latest
             target: x86_64-pc-windows-msvc
-          - name: win32-arm64-msvc # napi naming convention
+            arch: x64
+          - name: win32-arm64-msvc
             os: windows-latest
             target: aarch64-pc-windows-msvc
+            arch: arm64
 
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
         with:
-          ref: ${{ github.event_name == 'release' && github.event.release.tag_name || 'main' }}
+          ref: ${{ github.event_name == 'release' && github.event.release.tag_name || format('v{0}', needs.prepare-release.outputs.version) }} # Checkout the correct tag
 
-      # Use the new composite action for building
+      # Use the composite action for building
       - name: Build Native Module
         uses: ./.github/actions/build-native-module
         with:
-          name: ${{ matrix.name }} # Pass the napi-style name
+          name: ${{ matrix.name }} # Pass the platform identifier name
           os: ${{ matrix.os }}
           target: ${{ matrix.target }}
-          artifact-name-prefix: 'binaries' # Specify the prefix for release artifacts
+          arch: ${{ matrix.arch }}
+          artifact-name-prefix: 'binaries' # Use 'binaries' prefix for release artifacts
 
   # GitHub Releaseを作成
   create-release:
@@ -183,8 +189,8 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-          fetch-depth: 0
-          ref: main # 最新の変更を取得
+          ref: ${{ github.event_name == 'release' && github.event.release.tag_name || format('v{0}', needs.prepare-release.outputs.version) }} # Checkout the correct tag
+          # リリース対象のタグ/ブランチをチェックアウト
       
       # リリースノートを抽出
       - name: リリースノート抽出
@@ -209,7 +215,7 @@ jobs:
   publish-npm:
     name: npmパブリッシュ
     runs-on: ubuntu-latest
-    needs: [check-version, create-release, build-binaries]
+    needs: [check-version, create-release, build-binaries, prepare-release]
     # リリースの作成もしくはリリースイベントから実行された場合に実行
     if: needs.check-version.outputs.should_release == 'true' || github.event_name == 'release'
     permissions:
@@ -217,7 +223,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-          ref: ${{ github.event_name == 'release' && github.event.release.tag_name || 'main' }}
+          ref: ${{ github.event_name == 'release' && github.event.release.tag_name || format('v{0}', needs.prepare-release.outputs.version) }} # Checkout the correct tag
           # リリース対象のタグ/ブランチをチェックアウト
 
       - name: Node.js設定
@@ -230,24 +236,12 @@ jobs:
       - name: 成果物をダウンロード
         uses: actions/download-artifact@v4
         with:
-          path: artifacts # ダウンロード先ディレクトリ
-
-      # 成果物をプロジェクトルートにコピー
-      # NAPI-RS は通常、ルートディレクトリにある .node ファイルを探します
-      - name: 成果物を配置
-        shell: bash
-        run: |
-          echo "Copying built artifacts..."
-          # アーティファクトは artifacts/binaries-<platform>/electron-pan-clip.<platform>.node にあるはず
-          # これらをプロジェクトのルートディレクトリにコピーする
-          # find コマンドで全ての .node ファイルを見つけてカレントディレクトリにコピー
-          find artifacts/binaries-* -name '*.node' -exec cp {} . \;
-
-          echo "Copied .node files to root directory:"
-          ls -la *.node
+          path: artifacts # Download all artifacts to a single directory
+          pattern: binary-* # Match all binary artifacts uploaded earlier
+          merge-multiple: true # Merge artifacts into one directory
 
       # npm へパブリッシュ (provenance を使用)
-      # package.json の prepublishOnly スクリプトが @napi-rs/cli build --release などを実行することを期待
+      # package.json の prepublishOnly スクリプト (`napi prepublish`) が実行される
       - name: npm へパブリッシュ
         run: npm publish --provenance --access public
         env:
@@ -256,32 +250,6 @@ jobs:
       # バイナリ検証は publish 後に行うか、別ジョブにするか、内容を見直す必要がある
       # - name: バイナリ検証
       #   run: node scripts/verify-binaries.js
-
-  # GitHub Release へアセットをアップロード
-  upload-assets:
-    name: GitHubリリースへアセットをアップロード
-    needs: [check-version, create-release, build-binaries, prepare-release]
-    # リリース準備が完了した場合のみ実行
-    if: needs.check-version.outputs.should_release == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: 成果物をダウンロード
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-
-      - name: アセットをアップロード
-        uses: softprops/action-gh-release@v1 # Use the same action for uploading
-        with:
-          tag_name: v${{ needs.prepare-release.outputs.version }} # Use version directly from prepare-release
-          files: |
-            artifacts/binaries-linux-x64-gnu/*.node
-            artifacts/binaries-darwin-x64/*.node
-            artifacts/binaries-darwin-arm64/*.node
-            artifacts/binaries-win32-x64-msvc/*.node
-            artifacts/binaries-win32-arm64-msvc/*.node
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # スモークテスト
   smoke-test:
