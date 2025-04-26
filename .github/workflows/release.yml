@@ -159,7 +159,10 @@ jobs:
             os: windows-latest
             target: x86_64-pc-windows-msvc
             arch: x64
-          # win32-arm64-msvc is removed
+          - name: win32-arm64-msvc
+            os: windows-latest
+            target: aarch64-pc-windows-msvc
+            arch: arm64
 
     runs-on: ${{ matrix.os }}
     steps:
