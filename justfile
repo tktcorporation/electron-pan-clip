@@ -21,7 +21,7 @@ init:
   cargo binstall watchexec-cli cargo-insta typos-cli cargo-shear dprint -y
   npm install -g pnpm typescript @napi-rs/cli @antfu/ni
   # Node.js related init
-  pnpm install
+  ni
   # Linuxの依存関係をインストール
   just install-linux-deps
 

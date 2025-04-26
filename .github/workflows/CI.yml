@@ -27,24 +27,24 @@ jobs:
         settings:
           - host: macos-latest
             target: x86_64-apple-darwin
-            build: yarn build --target x86_64-apple-darwin
+            build: nr build --target x86_64-apple-darwin
           - host: windows-latest
-            build: yarn build --target x86_64-pc-windows-msvc
+            build: nr build --target x86_64-pc-windows-msvc
             target: x86_64-pc-windows-msvc
           - host: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-debian
-            build: yarn build --target x86_64-unknown-linux-gnu
+            build: nr build --target x86_64-unknown-linux-gnu
           - host: ubuntu-latest
             target: x86_64-unknown-linux-musl
             docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-alpine
-            build: yarn build --target x86_64-unknown-linux-musl
+            build: nr build --target x86_64-unknown-linux-musl
           - host: macos-latest
             target: aarch64-apple-darwin
-            build: yarn build --target aarch64-apple-darwin
+            build: nr build --target aarch64-apple-darwin
           - host: windows-latest
             target: aarch64-pc-windows-msvc
-            build: yarn build --target aarch64-pc-windows-msvc
+            build: nr build --target aarch64-pc-windows-msvc
     name: stable - ${{ matrix.settings.target }} - node@20
     runs-on: ${{ matrix.settings.host }}
     steps:
@@ -83,8 +83,10 @@ jobs:
         if: matrix.settings.target == 'i686-pc-windows-msvc'
         run: yarn config set supportedArchitectures.cpu "ia32"
         shell: bash
+      - name: Install @antfu/ni
+        run: npm install -g @antfu/ni
       - name: Install dependencies
-        run: yarn install
+        run: ni
       - name: Setup node x86
         uses: actions/setup-node@v4
         if: matrix.settings.target == 'i686-pc-windows-msvc'
@@ -133,8 +135,10 @@ jobs:
           node-version: ${{ matrix.node }}
           cache: yarn
           architecture: x64
+      - name: Install @antfu/ni
+        run: npm install -g @antfu/ni
       - name: Install dependencies
-        run: yarn install
+        run: ni
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
@@ -144,7 +148,7 @@ jobs:
         run: ls -R .
         shell: bash
       - name: Test bindings
-        run: yarn test
+        run: nr test
   test-linux-x64-gnu-binding:
     name: Test bindings on Linux-x64-gnu - node@${{ matrix.node }}
     needs:
@@ -163,8 +167,10 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
           cache: yarn
+      - name: Install @antfu/ni
+        run: npm install -g @antfu/ni
       - name: Install dependencies
-        run: yarn install
+        run: ni
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
@@ -174,7 +180,7 @@ jobs:
         run: ls -R .
         shell: bash
       - name: Test bindings
-        run: docker run --rm -v $(pwd):/build -w /build node:${{ matrix.node }}-slim yarn test
+        run: docker run --rm -v $(pwd):/build -w /build node:${{ matrix.node }}-slim npm test
   test-linux-x64-musl-binding:
     name: Test bindings on x86_64-unknown-linux-musl - node@${{ matrix.node }}
     needs:
@@ -193,10 +199,12 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
           cache: yarn
+      - name: Install @antfu/ni
+        run: npm install -g @antfu/ni
       - name: Install dependencies
         run: |
           yarn config set supportedArchitectures.libc "musl"
-          yarn install
+          ni
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
@@ -221,14 +229,16 @@ jobs:
         with:
           node-version: 20
           cache: yarn
+      - name: Install @antfu/ni
+        run: npm install -g @antfu/ni
       - name: Install dependencies
-        run: yarn install
+        run: ni
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
       - name: Move artifacts
-        run: yarn artifacts
+        run: nr artifacts
       - name: List packages
         run: ls -R ./npm
         shell: bash

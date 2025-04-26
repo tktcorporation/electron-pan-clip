@@ -128,7 +128,7 @@ jobs:
       # 変更をコミットし、タグを作成
       - name: Commit changes and create tag
         run: |
-          git add package.json pnpm-lock.yaml CHANGELOG.md
+          git add .
           git commit -m "chore: Bump version to v${{ steps.get_version.outputs.version }}"
           git tag -a v${{ steps.get_version.outputs.version }} -m "Release v${{ steps.get_version.outputs.version }}"
           git push
