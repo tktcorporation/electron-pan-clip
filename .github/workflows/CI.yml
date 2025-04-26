@@ -27,18 +27,36 @@ jobs:
         settings:
           - host: macos-latest
             target: x86_64-apple-darwin
-            build: yarn build --target x86_64-apple-darwin
+            build: |
+              export CARGO_TARGET_X86_64_APPLE_DARWIN_LINKER="$(xcrun --find clang)"
+              export SDKROOT=$(xcrun --sdk macosx --show-sdk-path)
+              export MACOSX_DEPLOYMENT_TARGET=$(xcrun --sdk macosx --show-sdk-platform-version)
+              yarn build --target x86_64-apple-darwin
           - host: windows-latest
             build: yarn build --target x86_64-pc-windows-msvc
             target: x86_64-pc-windows-msvc
           - host: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-debian
-            build: yarn build --target x86_64-unknown-linux-gnu
+            build: |
+              echo "Installing dependencies for x86_64 native compilation..."
+              sudo apt-get install -y --no-install-recommends \
+                pkg-config \
+                libx11-dev \
+                libxtst-dev \
+                libdbus-1-dev
+              yarn build --target x86_64-unknown-linux-gnu
           - host: ubuntu-latest
             target: x86_64-unknown-linux-musl
             docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-alpine
-            build: yarn build --target x86_64-unknown-linux-musl
+            build: |
+              echo "Installing dependencies for x86_64-unknown-linux-musl native compilation..."
+              sudo apk add --no-cache \
+                pkgconfig \
+                libX11-dev \
+                libxtst-dev \
+                libdbus-1-dev
+              yarn build --target x86_64-unknown-linux-musl
           - host: macos-latest
             target: aarch64-apple-darwin
             build: yarn build --target aarch64-apple-darwin
