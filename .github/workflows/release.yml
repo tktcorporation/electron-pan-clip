@@ -237,8 +237,69 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: artifacts # Download all artifacts to a single directory
-          pattern: binary-* # Match all binary artifacts uploaded earlier
+          pattern: binaries-* # Match all binary artifacts uploaded earlier
           merge-multiple: true # Merge artifacts into one directory
+      
+      # バイナリファイルをnpmパッケージ用の場所に移動
+      - name: バイナリファイルをnpm用にセットアップ
+        run: |
+          echo "ダウンロードした成果物の内容:"
+          find artifacts -type f | sort
+          
+          # .nodeファイルをnpm publishに必要な場所にコピー
+          echo "バイナリファイルをルートディレクトリにコピー"
+          find artifacts -name "*.node" -exec cp {} . \;
+          
+          echo "コピーしたバイナリファイル:"
+          ls -la *.node || echo "バイナリファイルが見つかりません！"
+          
+          # npm パッケージングに向けて追加のバイナリモジュールとして必要なファイルを作成
+          echo "optionalDependencies向けのnpmパッケージファイルを作成"
+          mkdir -p npm
+          for FILE in *.node; do
+            PLATFORM=$(echo "$FILE" | sed 's/electron-pan-clip\.\(.*\)\.node/\1/')
+            echo "検出: $FILE -> プラットフォーム: $PLATFORM"
+            
+            # optionalDependenciesに対応するディレクトリを作成
+            MODULE_NAME="electron-pan-clip-$PLATFORM"
+            mkdir -p "npm/$MODULE_NAME"
+            
+            # パッケージファイルをコピー
+            cp "$FILE" "npm/$MODULE_NAME/$FILE"
+            
+            # package.jsonを作成
+            OS_TYPE=$(echo $PLATFORM | cut -d'-' -f1)
+            CPU_TYPE=$(echo $PLATFORM | cut -d'-' -f2)
+            VERSION="${{ needs.prepare-release.outputs.version || github.event.release.tag_name }}"
+            
+            echo "{" > "npm/$MODULE_NAME/package.json"
+            echo "  \"name\": \"electron-pan-clip-$PLATFORM\"," >> "npm/$MODULE_NAME/package.json"
+            echo "  \"version\": \"$VERSION\"," >> "npm/$MODULE_NAME/package.json"
+            echo "  \"os\": [\"$OS_TYPE\"]," >> "npm/$MODULE_NAME/package.json"
+            echo "  \"cpu\": [\"$CPU_TYPE\"]," >> "npm/$MODULE_NAME/package.json"
+            echo "  \"main\": \"$FILE\"," >> "npm/$MODULE_NAME/package.json"
+            echo "  \"files\": [\"$FILE\"]," >> "npm/$MODULE_NAME/package.json"
+            echo "  \"description\": \"Prebuilt binary for electron-pan-clip on $PLATFORM platform\"," >> "npm/$MODULE_NAME/package.json"
+            echo "  \"license\": \"MIT\"," >> "npm/$MODULE_NAME/package.json"
+            echo "  \"engines\": {" >> "npm/$MODULE_NAME/package.json"
+            echo "    \"node\": \">= 22\"" >> "npm/$MODULE_NAME/package.json"
+            echo "  }," >> "npm/$MODULE_NAME/package.json"
+            echo "  \"repository\": \"https://github.com/tktcorporation/electron-pan-clip\"" >> "npm/$MODULE_NAME/package.json"
+            echo "}" >> "npm/$MODULE_NAME/package.json"
+          done
+          
+          echo "作成したnpmパッケージディレクトリ:"
+          find npm -type f | sort
+
+      # パッケージ内容確認
+      - name: パッケージ内容確認
+        run: |
+          echo "パッケージ内容:"
+          find . -maxdepth 1 -type f -name "*.node" | sort
+          echo "napi prepublishを手動で実行して内容確認"
+          npm run prepublishOnly || echo "prepublishOnlyスクリプトの実行に失敗しました"
+          echo "npmパッケージディレクトリ内容:"
+          find npm -type f | sort
 
       # npm へパブリッシュ (provenance を使用)
       # package.json の prepublishOnly スクリプト (`napi prepublish`) が実行される

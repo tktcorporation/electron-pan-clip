@@ -67,9 +67,20 @@ runs:
         echo "インストールされたバイナリファイル:"
         find $NODE_MODULES_PATH/${{ inputs.package-name }} -name "*.node" | sort
         
+        # npmパッケージの内容を詳しく確認
+        echo "パッケージ内部構造:"
+        find $NODE_MODULES_PATH/${{ inputs.package-name }} -type f | sort
+        
+        echo "index.jsの内容確認:"
+        cat $NODE_MODULES_PATH/${{ inputs.package-name }}/index.js | grep -n "require"
+        
+        # optionalDependenciesのチェック
+        echo "package.jsonの確認:"
+        cat $NODE_MODULES_PATH/${{ inputs.package-name }}/package.json | grep -A 10 "optional"
+        
         # テスト実行
         echo "パッケージ動作テスト:"
-        NODE_PATH=$(npm root -g) node -e "try { console.log('Imported package:', require('${{ inputs.package-name }}')); } catch (e) { console.error('インポートエラー:', e); process.exit(1); }"
+        NODE_PATH=$(npm root -g) node -e "try { console.log('Imported package:', require('${{ inputs.package-name }}')); } catch (e) { console.error('インポートエラー:', e); console.error(e.stack); process.exit(1); }"
     
     - name: カスタムテスト実行
       if: inputs.test-script != ''
