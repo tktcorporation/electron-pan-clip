@@ -3,17 +3,14 @@
   "version": "0.0.25",
   "main": "index.js",
   "types": "index.d.ts",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/tktcorporation/electron-pan-clip.git"
-  },
+  "repository": "git@github.com:tktcorporation/electron-pan-clip.git",
   "publishConfig": {
     "registry": "https://registry.npmjs.org/",
     "access": "public"
   },
   "license": "MIT",
   "engines": {
-    "node": ">= 22"
+    "node": ">= 20"
   },
   "files": [
     "index.d.ts",
@@ -25,7 +22,6 @@
     "triples": {
       "defaults": true,
       "additional": [
-        "aarch64-unknown-linux-gnu",
         "aarch64-apple-darwin",
         "aarch64-pc-windows-msvc",
         "x86_64-apple-darwin",

@@ -2,8 +2,8 @@ name: Release
 
 permissions:
   contents: write
-  id-token: write # npm publish --provenance 用
-  packages: write # npm package用
+  id-token: write
+  packages: write
 
 on:
   # 手動実行用トリガー（バージョン指定とタイプ選択可能）
@@ -295,9 +295,9 @@ jobs:
             echo "  \"description\": \"Prebuilt binary for electron-pan-clip on $PLATFORM platform\"," >> "npm/$PLATFORM/package.json"
             echo "  \"license\": \"MIT\"," >> "npm/$PLATFORM/package.json"
             echo "  \"engines\": {" >> "npm/$PLATFORM/package.json"
-            echo "    \"node\": \">= 22\"" >> "npm/$PLATFORM/package.json"
+            echo "    \"node\": \">= 20\"" >> "npm/$PLATFORM/package.json"
             echo "  }," >> "npm/$PLATFORM/package.json"
-            echo "  \"repository\": \"https://github.com/tktcorporation/electron-pan-clip\"" >> "npm/$PLATFORM/package.json"
+            echo "  \"repository\": \"git@github.com:tktcorporation/electron-pan-clip.git\"" >> "npm/$PLATFORM/package.json"
             echo "}" >> "npm/$PLATFORM/package.json"
           done
           
@@ -312,10 +312,12 @@ jobs:
         run: |
           echo "パッケージ内容:"
           find . -maxdepth 1 -type f -name "*.node" | sort
-          echo "napi prepublishを手動で実行して内容確認"
-          npm run prepublishOnly || echo "prepublishOnlyスクリプトの実行に失敗しました"
           echo "npmパッケージディレクトリ内容:"
           find npm -type f | sort
+
+      - name: パッケージ内容確認
+        run: ls -R ./npm
+        shell: bash
 
       # npm へパブリッシュ (provenance を使用)
       # package.json の prepublishOnly スクリプト (`napi prepublish`) が実行される
@@ -323,6 +325,7 @@ jobs:
         run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # バイナリ検証は publish 後に行うか、別ジョブにするか、内容を見直す必要がある
       # - name: バイナリ検証
