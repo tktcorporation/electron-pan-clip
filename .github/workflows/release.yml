@@ -256,38 +256,54 @@ jobs:
           # npm パッケージングに向けて追加のバイナリモジュールとして必要なファイルを作成
           echo "optionalDependencies向けのnpmパッケージファイルを作成"
           mkdir -p npm
+          
+          # メインパッケージのoptionalDependenciesを保存する変数
+          OPTIONAL_DEPS="{"
+          
           for FILE in *.node; do
             PLATFORM=$(echo "$FILE" | sed 's/electron-pan-clip\.\(.*\)\.node/\1/')
             echo "検出: $FILE -> プラットフォーム: $PLATFORM"
             
-            # optionalDependenciesに対応するディレクトリを作成
-            MODULE_NAME="electron-pan-clip-$PLATFORM"
-            mkdir -p "npm/$MODULE_NAME"
+            # napi-rsが期待するパス構造にする
+            mkdir -p "npm/$PLATFORM"
             
             # パッケージファイルをコピー
-            cp "$FILE" "npm/$MODULE_NAME/$FILE"
+            cp "$FILE" "npm/$PLATFORM/$FILE"
             
             # package.jsonを作成
             OS_TYPE=$(echo $PLATFORM | cut -d'-' -f1)
             CPU_TYPE=$(echo $PLATFORM | cut -d'-' -f2)
             VERSION="${{ needs.prepare-release.outputs.version || github.event.release.tag_name }}"
+            VERSION="${VERSION#v}" # vがあれば除去
             
-            echo "{" > "npm/$MODULE_NAME/package.json"
-            echo "  \"name\": \"electron-pan-clip-$PLATFORM\"," >> "npm/$MODULE_NAME/package.json"
-            echo "  \"version\": \"$VERSION\"," >> "npm/$MODULE_NAME/package.json"
-            echo "  \"os\": [\"$OS_TYPE\"]," >> "npm/$MODULE_NAME/package.json"
-            echo "  \"cpu\": [\"$CPU_TYPE\"]," >> "npm/$MODULE_NAME/package.json"
-            echo "  \"main\": \"$FILE\"," >> "npm/$MODULE_NAME/package.json"
-            echo "  \"files\": [\"$FILE\"]," >> "npm/$MODULE_NAME/package.json"
-            echo "  \"description\": \"Prebuilt binary for electron-pan-clip on $PLATFORM platform\"," >> "npm/$MODULE_NAME/package.json"
-            echo "  \"license\": \"MIT\"," >> "npm/$MODULE_NAME/package.json"
-            echo "  \"engines\": {" >> "npm/$MODULE_NAME/package.json"
-            echo "    \"node\": \">= 22\"" >> "npm/$MODULE_NAME/package.json"
-            echo "  }," >> "npm/$MODULE_NAME/package.json"
-            echo "  \"repository\": \"https://github.com/tktcorporation/electron-pan-clip\"" >> "npm/$MODULE_NAME/package.json"
-            echo "}" >> "npm/$MODULE_NAME/package.json"
+            # プラットフォーム固有パッケージの名前
+            PLATFORM_PKG_NAME="electron-pan-clip-$PLATFORM"
+            
+            # optionalDependenciesに追加
+            if [ "$OPTIONAL_DEPS" != "{" ]; then
+              OPTIONAL_DEPS="$OPTIONAL_DEPS,"
+            fi
+            OPTIONAL_DEPS="$OPTIONAL_DEPS\"$PLATFORM_PKG_NAME\":\"$VERSION\""
+            
+            echo "{" > "npm/$PLATFORM/package.json"
+            echo "  \"name\": \"$PLATFORM_PKG_NAME\"," >> "npm/$PLATFORM/package.json"
+            echo "  \"version\": \"$VERSION\"," >> "npm/$PLATFORM/package.json"
+            echo "  \"os\": [\"$OS_TYPE\"]," >> "npm/$PLATFORM/package.json"
+            echo "  \"cpu\": [\"$CPU_TYPE\"]," >> "npm/$PLATFORM/package.json"
+            echo "  \"main\": \"$FILE\"," >> "npm/$PLATFORM/package.json"
+            echo "  \"files\": [\"$FILE\"]," >> "npm/$PLATFORM/package.json"
+            echo "  \"description\": \"Prebuilt binary for electron-pan-clip on $PLATFORM platform\"," >> "npm/$PLATFORM/package.json"
+            echo "  \"license\": \"MIT\"," >> "npm/$PLATFORM/package.json"
+            echo "  \"engines\": {" >> "npm/$PLATFORM/package.json"
+            echo "    \"node\": \">= 22\"" >> "npm/$PLATFORM/package.json"
+            echo "  }," >> "npm/$PLATFORM/package.json"
+            echo "  \"repository\": \"https://github.com/tktcorporation/electron-pan-clip\"" >> "npm/$PLATFORM/package.json"
+            echo "}" >> "npm/$PLATFORM/package.json"
           done
           
+          # optionalDependenciesを閉じる
+          OPTIONAL_DEPS="$OPTIONAL_DEPS}"
+
           echo "作成したnpmパッケージディレクトリ:"
           find npm -type f | sort
 
