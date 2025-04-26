@@ -21,6 +21,12 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: 実行情報の初期化
+      shell: bash
+      run: |
+        echo "ACTION_SUMMARY=[]" >> $GITHUB_ENV
+        echo "ARTIFACTS_INFO=[]" >> $GITHUB_ENV
+
     - name: Rustツールチェインのセットアップ
       uses: actions-rs/toolchain@v1
       with:
@@ -29,7 +35,9 @@ runs:
 
     - name: Rustターゲットの追加
       shell: bash
-      run: rustup target add ${{ inputs.target }}
+      run: |
+        rustup target add ${{ inputs.target }}
+        echo "ACTION_SUMMARY=$(echo $ACTION_SUMMARY | jq -c '. += ["Rustターゲット '${{ inputs.target }}' を追加しました"]')" >> $GITHUB_ENV
 
     - name: Node.js設定
       uses: ./.github/actions/node-setup
@@ -49,6 +57,7 @@ runs:
             libx11-dev \
             libxtst-dev \
             libdbus-1-dev # electron-rs/cargo-build requires this
+          echo "ACTION_SUMMARY=$(echo $ACTION_SUMMARY | jq -c '. += ["Linux依存関係をインストールしました (x86_64)"]')" >> $GITHUB_ENV
         fi
 
     - name: バイナリビルド (napi build)
@@ -61,16 +70,56 @@ runs:
           export CARGO_TARGET_X86_64_APPLE_DARWIN_LINKER="$(xcrun --find clang)"
           export SDKROOT=$(xcrun --sdk macosx --show-sdk-path)
           export MACOSX_DEPLOYMENT_TARGET=$(xcrun --sdk macosx --show-sdk-platform-version)
+          echo "ACTION_SUMMARY=$(echo $ACTION_SUMMARY | jq -c '. += ["macOSでARM64からx86_64へのクロスコンパイルを設定しました"]')" >> $GITHUB_ENV
         fi
         
         pnpm exec napi build --platform --release --target ${{ inputs.target }}
+        echo "ACTION_SUMMARY=$(echo $ACTION_SUMMARY | jq -c '. += ["ターゲット '${{ inputs.target }}' 用のネイティブモジュールをビルドしました"]')" >> $GITHUB_ENV
 
     - name: List built files
       shell: bash
-      run: ls -la *.node
+      run: |
+        NODE_FILES=$(ls -la *.node)
+        echo "BUILT_FILES<<EOF" >> $GITHUB_ENV
+        echo "$NODE_FILES" >> $GITHUB_ENV
+        echo "EOF" >> $GITHUB_ENV
 
     - name: 成果物をアップロード
       uses: actions/upload-artifact@v4
       with:
         name: ${{ inputs.artifact-name-prefix }}-${{ inputs.name }}
-        path: "*.node" 
+        path: "*.node"
+      
+    - name: 成果物情報の記録
+      shell: bash
+      run: |
+        ARTIFACT_NAME="${{ inputs.artifact-name-prefix }}-${{ inputs.name }}"
+        echo "ARTIFACTS_INFO=$(echo $ARTIFACTS_INFO | jq -c '. += ["'$ARTIFACT_NAME' (ビルドされた*.nodeファイルを含む)"]')" >> $GITHUB_ENV
+
+    - name: サマリー出力
+      shell: bash
+      run: |
+        echo "## 📋 Build Native Module (${{ inputs.name }}) サマリー" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📊 実行情報" >> $GITHUB_STEP_SUMMARY
+        echo "- **ターゲット:** ${{ inputs.target }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **OS:** ${{ inputs.os }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **アーキテクチャ:** ${{ inputs.arch }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        echo "### 🔧 実行したアクション" >> $GITHUB_STEP_SUMMARY
+        for action in $(echo $ACTION_SUMMARY | jq -r '.[]'); do
+          echo "- $action" >> $GITHUB_STEP_SUMMARY
+        done
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        echo "### 📦 生成された成果物" >> $GITHUB_STEP_SUMMARY
+        for artifact in $(echo $ARTIFACTS_INFO | jq -r '.[]'); do
+          echo "- $artifact" >> $GITHUB_STEP_SUMMARY
+        done
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        echo "### 🔍 ビルドされたファイル" >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
+        echo "$BUILT_FILES" >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY 

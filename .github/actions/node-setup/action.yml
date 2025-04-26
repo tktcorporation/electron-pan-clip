@@ -18,6 +18,12 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: 実行情報の初期化
+      shell: bash
+      run: |
+        echo "ACTION_SUMMARY=[]" >> $GITHUB_ENV
+        echo "INSTALLED_TOOLS=[]" >> $GITHUB_ENV
+
     - name: Setup Node.js
       uses: actions/setup-node@v3
       with:
@@ -25,12 +31,47 @@ runs:
         node-version: ${{ inputs.node-version != '' && inputs.node-version || '' }}
         registry-url: ${{ inputs.registry-url }}
     
+    - name: Node.js情報記録
+      shell: bash
+      run: |
+        NODE_VERSION=$(node -v)
+        NPM_VERSION=$(npm -v)
+        echo "INSTALLED_TOOLS=$(echo $INSTALLED_TOOLS | jq -c '. += ["Node.js (バージョン: '$NODE_VERSION')"]')" >> $GITHUB_ENV
+        echo "INSTALLED_TOOLS=$(echo $INSTALLED_TOOLS | jq -c '. += ["npm (バージョン: '$NPM_VERSION')"]')" >> $GITHUB_ENV
+        echo "ACTION_SUMMARY=$(echo $ACTION_SUMMARY | jq -c '. += ["Node.js '$NODE_VERSION' をセットアップしました"]')" >> $GITHUB_ENV
+    
     - name: add antfu/ni
       shell: bash
       run: |
         npm i -g @antfu/ni
+        echo "INSTALLED_TOOLS=$(echo $INSTALLED_TOOLS | jq -c '. += ["@antfu/ni (npm クライアント)"]')" >> $GITHUB_ENV
+        echo "ACTION_SUMMARY=$(echo $ACTION_SUMMARY | jq -c '. += ["@antfu/ni ツールをインストールしました"]')" >> $GITHUB_ENV
 
     - name: 依存関係インストール
       shell: bash
       working-directory: ${{ inputs.package-path }}
-      run: nci
+      run: |
+        nci
+        echo "ACTION_SUMMARY=$(echo $ACTION_SUMMARY | jq -c '. += ["パッケージ依存関係を '${{ inputs.package-path }}' にインストールしました"]')" >> $GITHUB_ENV
+
+    - name: サマリー出力
+      shell: bash
+      run: |
+        echo "## 📦 Node.js設定 サマリー" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📊 実行情報" >> $GITHUB_STEP_SUMMARY
+        echo "- **Node.jsバージョン設定:** ${{ inputs.node-version == '' && '.node-versionファイルから' || inputs.node-version }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **npmレジストリURL:** ${{ inputs.registry-url }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **パッケージパス:** ${{ inputs.package-path }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        echo "### 🔧 実行したアクション" >> $GITHUB_STEP_SUMMARY
+        for action in $(echo $ACTION_SUMMARY | jq -r '.[]'); do
+          echo "- $action" >> $GITHUB_STEP_SUMMARY
+        done
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        echo "### 🛠️ インストールされたツール" >> $GITHUB_STEP_SUMMARY
+        for tool in $(echo $INSTALLED_TOOLS | jq -r '.[]'); do
+          echo "- $tool" >> $GITHUB_STEP_SUMMARY
+        done

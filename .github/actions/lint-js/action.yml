@@ -22,6 +22,12 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: 実行情報の初期化
+      shell: bash
+      run: |
+        echo "ACTION_SUMMARY=[]" >> $GITHUB_ENV
+        echo "LINT_RESULTS=[]" >> $GITHUB_ENV
+
     - name: Node.js設定
       uses: ./.github/actions/node-setup
       with:
@@ -33,23 +39,95 @@ runs:
       shell: bash
       run: |
         npm i -g @antfu/ni
+        echo "ACTION_SUMMARY=$(echo $ACTION_SUMMARY | jq -c '. += ["@antfu/ni ツールをインストールしました"]')" >> $GITHUB_ENV
     
     - name: Install dependencies
       shell: bash
       working-directory: ${{ inputs.working-directory }}
-      run: nci
+      run: |
+        nci
+        echo "ACTION_SUMMARY=$(echo $ACTION_SUMMARY | jq -c '. += ["パッケージ依存関係を '${{ inputs.working-directory }}' にインストールしました"]')" >> $GITHUB_ENV
 
     - name: Lint
       shell: bash
       working-directory: ${{ inputs.working-directory }}
-      run: ${{ inputs.lint-command }}
+      run: |
+        set +e
+        ${{ inputs.lint-command }} > /tmp/lint_output.txt 2>&1
+        LINT_EXIT_CODE=$?
+        set -e
+        
+        if [ $LINT_EXIT_CODE -eq 0 ]; then
+          echo "LINT_RESULTS=$(echo $LINT_RESULTS | jq -c '. += ["✅ Lintチェックに成功しました"]')" >> $GITHUB_ENV
+        else
+          LINT_ERROR=$(cat /tmp/lint_output.txt | tail -n 20)
+          echo "LINT_RESULTS=$(echo $LINT_RESULTS | jq -c '. += ["❌ Lintチェックに失敗しました"]')" >> $GITHUB_ENV
+          echo "LINT_ERROR<<EOF" >> $GITHUB_ENV
+          echo "$LINT_ERROR" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+        fi
+        
+        echo "ACTION_SUMMARY=$(echo $ACTION_SUMMARY | jq -c '. += ["'${{ inputs.working-directory }}' でLintを実行しました"]')" >> $GITHUB_ENV
+        
+        # 元のコマンドのexitコードを返す
+        exit $LINT_EXIT_CODE
 
     - name: Check for uncommitted changes
       if: inputs.check-uncommitted == 'true'
       shell: bash
       run: |
         if [[ -n $(git status --porcelain) ]]; then
+          UNCOMMITTED=$(git status --porcelain)
+          echo "UNCOMMITTED_CHANGES<<EOF" >> $GITHUB_ENV
+          echo "$UNCOMMITTED" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+          echo "LINT_RESULTS=$(echo $LINT_RESULTS | jq -c '. += ["⚠️ 未コミットの変更があります"]')" >> $GITHUB_ENV
+          echo "ACTION_SUMMARY=$(echo $ACTION_SUMMARY | jq -c '. += ["未コミットの変更を検出しました"]')" >> $GITHUB_ENV
+          
           echo "未コミットの変更があります。まず以下の変更をコミットしてください："
           git status --porcelain
           exit 1
+        else
+          echo "LINT_RESULTS=$(echo $LINT_RESULTS | jq -c '. += ["✅ 未コミットの変更はありません"]')" >> $GITHUB_ENV
+          echo "ACTION_SUMMARY=$(echo $ACTION_SUMMARY | jq -c '. += ["未コミット変更のチェックを実施しました (問題なし)"]')" >> $GITHUB_ENV
+        fi
+    
+    - name: サマリー出力
+      if: always()
+      shell: bash
+      run: |
+        echo "## 🔍 JavaScriptコードのLint サマリー" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📊 実行情報" >> $GITHUB_STEP_SUMMARY
+        echo "- **Node.jsバージョン:** ${{ inputs.node-version == '' && '.node-versionファイルから' || inputs.node-version }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Lintコマンド:** \`${{ inputs.lint-command }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "- **作業ディレクトリ:** ${{ inputs.working-directory }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **未コミット変更チェック:** ${{ inputs.check-uncommitted }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        echo "### 🔧 実行したアクション" >> $GITHUB_STEP_SUMMARY
+        for action in $(echo $ACTION_SUMMARY | jq -r '.[]'); do
+          echo "- $action" >> $GITHUB_STEP_SUMMARY
+        done
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        echo "### 📝 Lint結果" >> $GITHUB_STEP_SUMMARY
+        for result in $(echo $LINT_RESULTS | jq -r '.[]'); do
+          echo "- $result" >> $GITHUB_STEP_SUMMARY
+        done
+        
+        if [[ -n "${LINT_ERROR:-}" ]]; then
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### Lintエラー詳細" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "$LINT_ERROR" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        if [[ -n "${UNCOMMITTED_CHANGES:-}" ]]; then
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### 未コミットの変更" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "$UNCOMMITTED_CHANGES" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
         fi 

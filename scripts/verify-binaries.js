@@ -11,11 +11,10 @@ const path = require("node:path");
 // 検証するプラットフォーム
 const platforms = [
 	"linux-x64-gnu",
-	// "linux-arm64-gnu", // Removed
 	"darwin-x64",
 	"darwin-arm64",
 	"win32-x64-msvc",
-	"win32-arm64-msvc", // Added
+	"win32-arm64-msvc",
 ];
 
 // 結果を保存する配列
@@ -25,8 +24,7 @@ let hasError = false;
 // 各プラットフォームのバイナリを検証
 for (const platform of platforms) {
 	const binaryPath = path.join(
-		"npm",
-		platform,
+		".", // Look in the current directory
 		`electron-pan-clip.${platform}.node`,
 	);
 

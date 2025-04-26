@@ -26,11 +26,23 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: 実行情報の初期化
+      shell: bash
+      run: |
+        echo "ACTION_SUMMARY=[]" >> $GITHUB_ENV
+        echo "INSTALLED_TOOLS=[]" >> $GITHUB_ENV
+
     # justを直接インストール
     - name: Justインストール
       uses: extractions/setup-just@v3
       with:
         just-version: ${{ inputs.just-version }}
+      
+    - name: Justインストール情報記録
+      shell: bash
+      run: |
+        echo "INSTALLED_TOOLS=$(echo $INSTALLED_TOOLS | jq -c '. += ["Just (バージョン: ${{ inputs.just-version }})"]')" >> $GITHUB_ENV
+        echo "ACTION_SUMMARY=$(echo $ACTION_SUMMARY | jq -c '. += ["Justコマンドをインストールしました"]')" >> $GITHUB_ENV
 
     # rustupを使用
     - name: Setup Rust
@@ -40,6 +52,13 @@ runs:
         toolchain: ${{ inputs.toolchain }}
         override: true
         components: ${{ inputs.components }}
+    
+    - name: Rust設定情報記録
+      shell: bash
+      run: |
+        echo "INSTALLED_TOOLS=$(echo $INSTALLED_TOOLS | jq -c '. += ["Rust (ツールチェーン: ${{ inputs.toolchain }})"]')" >> $GITHUB_ENV
+        echo "ACTION_SUMMARY=$(echo $ACTION_SUMMARY | jq -c '. += ["Rustツールチェーン (${{ inputs.toolchain }}) をセットアップしました"]')" >> $GITHUB_ENV
+        echo "ACTION_SUMMARY=$(echo $ACTION_SUMMARY | jq -c '. += ["コンポーネント: ${{ inputs.components }} をインストールしました"]')" >> $GITHUB_ENV
         
     - name: Linux依存関係をインストール
       if: runner.os == 'Linux' && inputs.install-dependencies == 'true'
@@ -48,9 +67,32 @@ runs:
         # sudoを使わずに直接apt-getを実行
         sudo apt-get update -y
         sudo apt-get install -y libx11-dev libxext-dev libxrender-dev libxtst-dev libxinerama-dev libxss-dev
+        echo "ACTION_SUMMARY=$(echo $ACTION_SUMMARY | jq -c '. += ["Linux依存関係をインストールしました (X11など)"]')" >> $GITHUB_ENV
 
     # Swatinem/rust-cacheは一時的に無効化
     # - name: Cache Rust dependencies
     #   uses: Swatinem/rust-cache@v2
     #   with:
     #     key: ${{ inputs.cache-key }} 
+    
+    - name: サマリー出力
+      shell: bash
+      run: |
+        echo "## 🦀 Rustセットアップ サマリー" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📊 実行情報" >> $GITHUB_STEP_SUMMARY
+        echo "- **Rustツールチェーン:** ${{ inputs.toolchain }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **コンポーネント:** ${{ inputs.components }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Linux依存関係インストール:** ${{ inputs.install-dependencies }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        echo "### 🔧 実行したアクション" >> $GITHUB_STEP_SUMMARY
+        for action in $(echo $ACTION_SUMMARY | jq -r '.[]'); do
+          echo "- $action" >> $GITHUB_STEP_SUMMARY
+        done
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        echo "### 🛠️ インストールされたツール" >> $GITHUB_STEP_SUMMARY
+        for tool in $(echo $INSTALLED_TOOLS | jq -r '.[]'); do
+          echo "- $tool" >> $GITHUB_STEP_SUMMARY
+        done 
