@@ -14,6 +14,9 @@ inputs:
     description: 'Prefix for the artifact name'
     required: false
     default: 'pr-binaries'
+  arch:
+    description: 'Architecture (e.g., x64, arm64)'
+    required: true
 
 runs:
   using: "composite"
@@ -21,9 +24,8 @@ runs:
     - name: Rustツールチェインのセットアップ
       uses: actions-rs/toolchain@v1
       with:
-        profile: minimal
         toolchain: stable
-        override: true
+        targets: ${{ inputs.target }}
 
     - name: Rustターゲットの追加
       shell: bash
@@ -49,18 +51,11 @@ runs:
             libdbus-1-dev # electron-rs/cargo-build requires this
         fi
 
-    - name: napi-rs CLI セットアップ
-      shell: bash
-      run: npm install -g @napi-rs/cli
-
     - name: バイナリビルド (napi build)
       shell: bash
       run: |
         set -ex
         echo "Running napi build for target: ${{ inputs.target }}"
-        # Set environment variables for cross-compilation if necessary
-        
-        # macOS ARM64からx86_64へのクロスコンパイル設定
         if [[ "${{ inputs.os }}" == "macos-latest" && "${{ inputs.target }}" == "x86_64-apple-darwin" && "$(uname -m)" == "arm64" ]]; then
           echo "Setting up cross-compilation from ARM64 to x86_64 on macOS..."
           export CARGO_TARGET_X86_64_APPLE_DARWIN_LINKER="$(xcrun --find clang)"
@@ -68,81 +63,14 @@ runs:
           export MACOSX_DEPLOYMENT_TARGET=$(xcrun --sdk macosx --show-sdk-platform-version)
         fi
         
-        # Linux cross-compilation settings (existing commented code)
-        # if [[ "${{ inputs.target }}" == "aarch64-unknown-linux-gnu" ]]; then
-        #   export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
-        #   export CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc
-        #   export CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++
-        # fi
-        
-        napi build --platform --release --target ${{ inputs.target }}
+        pnpm exec napi build --platform --release --target ${{ inputs.target }}
 
-    - name: 成果物移動 (.node)
+    - name: List built files
       shell: bash
-      run: |
-        set -e
-        TARGET_DIR="target/${{ inputs.target }}/release"
-        mkdir -p "$TARGET_DIR"
-        # napi build はルートに .node を出力する場合があるため検索
-        NODE_FILE=$(find . -maxdepth 1 -name "electron-pan-clip.*.node" -print -quit)
-        if [[ -n "$NODE_FILE" ]]; then
-          echo "Moving $NODE_FILE to $TARGET_DIR"
-          mv "$NODE_FILE" "$TARGET_DIR/"
-        else
-          # napi build が直接 target/.../release に出力する可能性も考慮
-          NODE_FILE_IN_TARGET=$(find "$TARGET_DIR" -name "electron-pan-clip.*.node" -print -quit)
-          if [[ -z "$NODE_FILE_IN_TARGET" ]]; then
-             echo "Error: No .node file found after napi build in root or $TARGET_DIR!"
-             echo "Listing current directory:"
-             ls -la .
-             echo "Listing target directory ($TARGET_DIR):"
-             ls -la "$TARGET_DIR" || echo "$TARGET_DIR not found or empty"
-             exit 1
-          fi
-          echo ".node file already exists in $TARGET_DIR, no move needed."
-        fi
-
-    - name: 成果物を収集
-      shell: bash
-      run: |
-        ARTIFACT_DIR="artifacts/${{ inputs.artifact-name-prefix }}-${{ inputs.name }}"
-        mkdir -p "$ARTIFACT_DIR"
-        TARGET_RELEASE_DIR="target/${{ inputs.target }}/release"
-        # inputs.name (例: linux-x64-gnu) を使って期待するファイル名を生成
-        EXPECTED_NODE_FILENAME="electron-pan-clip.${{ inputs.name }}.node"
-
-        echo "Target release directory: $TARGET_RELEASE_DIR"
-        echo "Artifact directory: $ARTIFACT_DIR"
-        echo "Expected node filename: $EXPECTED_NODE_FILENAME"
-        echo "Listing contents of $TARGET_RELEASE_DIR:"
-        ls -la "$TARGET_RELEASE_DIR" || echo "Directory not found or empty"
-
-        echo "Searching for .node file..."
-        NODE_FILE=$(find "$TARGET_RELEASE_DIR" -maxdepth 1 -name "$EXPECTED_NODE_FILENAME" -print -quit)
-
-        if [[ -n "$NODE_FILE" ]]; then
-          echo "Found node file: $NODE_FILE"
-          echo "Copying $NODE_FILE to $ARTIFACT_DIR/"
-          cp "$NODE_FILE" "$ARTIFACT_DIR/"
-        else
-          # 念のため、パターンマッチでも探してみる
-          NODE_FILE_PATTERN=$(find "$TARGET_RELEASE_DIR" -maxdepth 1 -name "electron-pan-clip.*.node" -print -quit)
-          if [[ -n "$NODE_FILE_PATTERN" ]]; then
-            echo "Found node file with pattern: $NODE_FILE_PATTERN"
-            echo "Copying $NODE_FILE_PATTERN to $ARTIFACT_DIR/$EXPECTED_NODE_FILENAME" # Rename to expected name
-            cp "$NODE_FILE_PATTERN" "$ARTIFACT_DIR/$EXPECTED_NODE_FILENAME"
-          else
-             echo "Error: No .node file found matching '$EXPECTED_NODE_FILENAME' or pattern 'electron-pan-clip.*.node' in $TARGET_RELEASE_DIR!"
-             echo "Listing current directory:"
-             ls -la .
-             echo "Listing target directory ($TARGET_RELEASE_DIR):"
-             ls -la "$TARGET_RELEASE_DIR" || echo "$TARGET_RELEASE_DIR not found or empty"
-             exit 1
-          fi
-        fi
+      run: ls -la *.node
 
     - name: 成果物をアップロード
       uses: actions/upload-artifact@v4
       with:
         name: ${{ inputs.artifact-name-prefix }}-${{ inputs.name }}
-        path: artifacts/${{ inputs.artifact-name-prefix }}-${{ inputs.name }} 
+        path: "*.node" 
