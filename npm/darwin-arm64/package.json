@@ -1,15 +1,15 @@
 {
-  "name": "electron-pan-clip-linux-x64-gnu",
+  "name": "electron-pan-clip-darwin-arm64",
   "version": "0.0.26",
   "os": [
-    "linux"
+    "darwin"
   ],
   "cpu": [
-    "x64"
+    "arm64"
   ],
-  "main": "electron-pan-clip.linux-x64-gnu.node",
+  "main": "electron-pan-clip.darwin-arm64.node",
   "files": [
-    "electron-pan-clip.linux-x64-gnu.node"
+    "electron-pan-clip.darwin-arm64.node"
   ],
   "description": "copy file paths to clipboard",
   "license": "MIT",
@@ -20,8 +20,5 @@
     "registry": "https://registry.npmjs.org/",
     "access": "public"
   },
-  "repository": "https://github.com/tktcorporation/electron-pan-clip",
-  "libc": [
-    "glibc"
-  ]
+  "repository": "https://github.com/tktcorporation/electron-pan-clip"
 }

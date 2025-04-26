@@ -24,11 +24,11 @@ on:
           - major
   
   # package.jsonの変更を検出した場合の自動実行
-  push:
-    branches:
-      - main
-    paths:
-      - 'package.json'
+  # push:
+  #   branches:
+  #     - main
+  #   paths:
+  #     - 'package.json'
   
   # リリース作成時の自動実行
   release:
