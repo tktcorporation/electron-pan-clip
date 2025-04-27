@@ -14,8 +14,7 @@
   },
   "files": [
     "index.d.ts",
-    "index.js",
-    "*.node"
+    "index.js"
   ],
   "napi": {
     "name": "electron-pan-clip",
