@@ -1,5 +1,5 @@
 {
-  "name": "electron-pan-clip-linux-x64-gnu",
+  "name": "electron-pan-clip-linux-x64-musl",
   "version": "0.0.27",
   "os": [
     "linux"
@@ -7,9 +7,9 @@
   "cpu": [
     "x64"
   ],
-  "main": "electron-pan-clip.linux-x64-gnu.node",
+  "main": "electron-pan-clip.linux-x64-musl.node",
   "files": [
-    "electron-pan-clip.linux-x64-gnu.node"
+    "electron-pan-clip.linux-x64-musl.node"
   ],
   "description": "copy file paths to clipboard",
   "license": "MIT",
@@ -22,6 +22,6 @@
   },
   "repository": "https://github.com/tktcorporation/electron-pan-clip",
   "libc": [
-    "glibc"
+    "musl"
   ]
 }

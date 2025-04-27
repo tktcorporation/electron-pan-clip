@@ -1,24 +1,38 @@
 use arboard::Clipboard;
 use std::io::{Error, ErrorKind};
-use url::Url;
+use std::path::Path;
 
 pub fn copy_files_to_clipboard(paths: &[String]) -> Result<(), Error> {
-  let uri_list: String = paths
-    .iter()
-    .filter_map(|p| Url::from_file_path(p).ok()) // 絶対パスに変換し、file:// URI を生成
-    .map(|u| u.to_string())
-    .collect::<Vec<String>>()
-    .join("\r\n"); // text/uri-list は CRLF 区切りが推奨されている
+  let mut uris = Vec::new();
 
-  // 有効なURIがなければ、クリップボードを初期化する前にエラーを返す
-  if uri_list.is_empty() {
+  for path_str in paths {
+    let path = Path::new(path_str);
+    // 絶対パスを取得し、失敗した場合はスキップ
+    match path.canonicalize() {
+      Ok(abs_path) => {
+        // file:// URI スキームを追加
+        // to_string_lossy を使用して、無効なUTF-8シーケンスを置換文字で処理
+        let uri = format!("file://{}", abs_path.to_string_lossy());
+        uris.push(uri);
+      }
+      Err(e) => {
+        eprintln!("Failed to canonicalize path {}: {}", path_str, e);
+        // canonicalize に失敗したパスはスキップ
+      }
+    }
+  }
+
+  // 有効なURIがなければエラーを返す
+  if uris.is_empty() {
     return Err(Error::new(
       ErrorKind::InvalidInput,
-      "No valid file URIs could be generated",
+      "No valid URIs could be created from the paths", // macOS とエラーメッセージを統一
     ));
   }
 
-  // クリップボードの初期化は有効なURIがある場合のみ行う
+  let uri_list = uris.join("\r\n");
+
+  // arboard を使用してクリップボードにコピー
   let mut clipboard = Clipboard::new().map_err(|e| {
     Error::new(
       ErrorKind::Other,
@@ -26,17 +40,20 @@ pub fn copy_files_to_clipboard(paths: &[String]) -> Result<(), Error> {
     )
   })?;
 
-  // text/uri-list として設定
-  // arboard は MIME タイプを直接指定する API がないため、標準の set_text を使う
-  // Linux では set_text が text/plain と text/uri-list (file:// の場合) の両方を設定することが期待される
-  clipboard.set_text(uri_list).map_err(|e| {
-    Error::new(
-      ErrorKind::Other,
-      format!("Failed to set clipboard content: {}", e),
-    )
-  })?;
+  clipboard
+    .set_text(uri_list.clone()) // text/plain としても設定（互換性のため）
+    .map_err(|e| {
+      Error::new(
+        ErrorKind::Other,
+        format!("Failed to set text clipboard: {}", e),
+      )
+    })?;
 
-  println!("Copied file URIs to clipboard on Linux: {:?}", paths); // デバッグ用出力
+  // 必要であれば text/uri-list も設定する (arboard は直接サポートしていない可能性があるため、
+  // set_text で代替するか、より低レベルなライブラリを使う必要があるかもしれない)
+  // 現状の arboard の set_text が多くの環境で text/uri-list 相当として機能することを期待
+
+  println!("Copied file URIs to clipboard on Linux: {:?}", uris); // 成功時にログ出力
   Ok(())
 }
 
@@ -45,80 +62,80 @@ mod tests {
   use super::*;
   use std::env::temp_dir;
   use std::fs::File;
-  use std::path::Path;
 
-  // URI生成のテスト
+  // URI生成の基本的なテスト
   #[test]
   fn test_uri_generation() {
-    // 存在するパスを作成
     let tmp_dir = temp_dir();
-    let test_file_path = tmp_dir.join("test_linux_clipboard.txt");
-
-    // ファイルを作成して確実に存在させる
+    let test_file_path = tmp_dir.join("test_linux_uri.txt");
     let _ = File::create(&test_file_path).expect("Failed to create test file");
 
-    // パスを文字列に変換
     let path_str = test_file_path.to_string_lossy().to_string();
+    let canonical_path = test_file_path.canonicalize().unwrap();
+    let expected_uri = format!("file://{}", canonical_path.to_string_lossy());
 
-    // URLに変換できることを確認
-    let url = Url::from_file_path(Path::new(&path_str)).expect("Failed to create URL from path");
-    assert!(url.to_string().starts_with("file://"));
+    let mut uris = Vec::new();
+    let path = Path::new(&path_str);
+    if let Ok(abs_path) = path.canonicalize() {
+      let uri = format!("file://{}", abs_path.to_string_lossy());
+      uris.push(uri);
+    }
 
-    // テスト後にファイルを削除
+    assert_eq!(uris.len(), 1);
+    assert_eq!(uris[0], expected_uri);
+
     let _ = std::fs::remove_file(test_file_path);
   }
 
-  // 実際のクリップボード操作テスト
-  // 注意: このテストは実際のクリップボードを変更します
+  // 不正なパスを扱えるかのテスト
   #[test]
-  #[ignore]
-  fn test_copy_to_clipboard() {
-    // 存在するファイルのパスを用意
-    let tmp_dir = temp_dir();
-    let test_file_path = tmp_dir.join("test_linux_clipboard_copy.txt");
+  fn test_invalid_paths() {
+    let invalid_paths = vec![
+      "/path/does/not/exist/linux.txt".to_string(),
+      "invalid-path-linux.txt".to_string(),
+    ];
 
-    // ファイルを作成
+    // copy_files_to_clipboard を呼び出すが、エラーが発生することを期待
+    let result = copy_files_to_clipboard(&invalid_paths);
+    assert!(result.is_err());
+
+    // エラーの種類とメッセージを検証
+    if let Err(err) = result {
+      assert_eq!(err.kind(), ErrorKind::InvalidInput);
+      assert!(err
+        .to_string()
+        .contains("No valid URIs could be created from the paths"));
+    }
+  }
+
+  // 実際のクリップボード操作テスト（CIではスキップ推奨）
+  #[test]
+  #[ignore] // CI 環境では X11 がないため失敗する可能性が高い
+  fn test_copy_to_clipboard() {
+    let tmp_dir = temp_dir();
+    let test_file_path = tmp_dir.join("test_linux_clipboard.txt");
     let _ = File::create(&test_file_path).expect("Failed to create test file");
 
-    // パスを文字列に変換
     let path_str = test_file_path.to_string_lossy().to_string();
 
     // クリップボードにコピー
-    let result = copy_files_to_clipboard(&[path_str.clone()]);
+    let result = copy_files_to_clipboard(&[path_str]);
+
+    // xclip がない環境や X11 がない環境では失敗することがある
+    // その場合はテストをパスさせるか、環境に応じた処理が必要
+    if let Err(e) = &result {
+      if e.to_string().contains("Failed to initialize clipboard")
+        || e.to_string().contains("X11 server connection timed out")
+        || e.to_string().contains("No text property")
+      // Wayland で発生しうるエラー
+      {
+        println!("⚠️ クリップボードテストをスキップ: 環境の問題 ({})", e);
+        return;
+      }
+    }
+
     assert!(result.is_ok(), "Copy operation failed: {:?}", result);
 
-    // クリップボードの内容を検証
-    // 注: 検証は手動で行う必要があるため、ここではエラーがないことだけを確認
-
-    // テスト後にファイルを削除
     let _ = std::fs::remove_file(test_file_path);
-  }
-
-  // 無効なパスのテスト
-  #[test]
-  fn test_invalid_paths() {
-    // 存在しない非現実的なパスを使用
-    let invalid_paths = vec![
-      "/this/path/does/not/exist/12345.txt".to_string(),
-      "not-a-real-path.txt".to_string(),
-    ];
-
-    // この場合は何らかのエラーになるはず（環境によって種類が異なる可能性あり）
-    let result = copy_files_to_clipboard(&invalid_paths);
-
-    // X11環境があるかどうかによって結果が変わる可能性がある
-    // X11環境がない場合: InvalidInput エラー
-    // X11環境がある場合: URL生成は成功するが、クリップボード操作でOtherエラーになる可能性がある
-    if let Err(err) = result {
-      // どちらかのエラー種類であることを確認
-      assert!(
-        err.kind() == ErrorKind::InvalidInput || err.kind() == ErrorKind::Other,
-        "Expected InvalidInput or Other error, but got: {:?}",
-        err
-      );
-    } else {
-      // テスト環境によっては成功する可能性もある（フルデスクトップ環境の場合）
-      println!("警告: 無効なパス処理がエラーなしで成功しました。テスト環境を確認してください。");
-    }
   }
 }

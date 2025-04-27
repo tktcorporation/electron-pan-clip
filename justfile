@@ -21,7 +21,7 @@ init:
   cargo binstall watchexec-cli cargo-insta typos-cli cargo-shear dprint -y
   npm install -g pnpm typescript @napi-rs/cli @antfu/ni
   # Node.js related init
-  pnpm install
+  ni
   # Linuxの依存関係をインストール
   just install-linux-deps
 
@@ -75,8 +75,27 @@ check-oxlint:
 # 全てのテストを実行
 test:
   @echo "🧪 テストを実行中..."
+  just build
+  just test-for-each-os
+
+# OSごとに適したテスト実行
+[windows]
+test-for-each-os:
+  @echo "🧪 Windowsでテストを実行中..."
   cargo test
   nr test
+
+[macos]
+test-for-each-os:
+  @echo "🧪 macOSでテストを実行中..."
+  cargo test
+  nr test
+
+[unix]
+test-for-each-os:
+  @echo "🧪 Xvfbを使用してテストを実行中..."
+  ./scripts/run-with-xvfb.sh cargo test
+  ./scripts/run-with-xvfb.sh nr test
 
 # コードをフォーマット
 fmt:
@@ -125,6 +144,7 @@ install-hook:
 build:
   @echo "🏗️ プロジェクトをビルド中..."
   cargo build --release
+  nr build
   
 # ドキュメント生成
 [unix]
@@ -140,18 +160,27 @@ doc:
 install-linux-deps:
   @echo "📦 Linux依存関係をインストール中..."
   sudo apt-get update
-  sudo apt-get install -y libx11-dev libxext-dev libxrender-dev libxtst-dev libxinerama-dev xvfb x11-apps libxcb1-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev
+  sudo apt-get install -y \
+    libx11-dev \
+    libxext-dev \
+    libxrender-dev \
+    libxtst-dev \
+    libxinerama-dev \
+    xvfb \
+    x11-apps \
+    libxcb1-dev \
+    libxcb-render0-dev \
+    libxcb-shape0-dev \
+    libxcb-xfixes0-dev \
+    xclip \
+    x11-apps \
+    xvfb \
+    xauth
 
 # Linuxの依存関係をインストール（何もしない、Windowsの場合）
 [windows]
 install-linux-deps:
   @echo "📦 Windows環境では不要なため、何もしません"
-
-# Xvfbを使用してテストを実行（Linux環境用）
-[unix]
-test-with-xvfb:
-  @echo "🧪 Xvfbを使用してテストを実行中..."
-  ./scripts/run-with-xvfb.sh cargo test 
 
 # Windowsクロスコンパイル環境のセットアップ
 [unix]

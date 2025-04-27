@@ -217,9 +217,6 @@ electron-pan-clip*.node
 # Documentation build output
 docs/api/
 
-# Old test directory (to be removed after migration is confirmed)
-__test__/
-
 # JSDoc cache
 .jsdoc-cache/
 
