@@ -1,6 +1,6 @@
 {
   "name": "electron-pan-clip-win32-arm64-msvc",
-  "version": "0.0.28",
+  "version": "0.0.29",
   "os": [
     "win32"
   ],
