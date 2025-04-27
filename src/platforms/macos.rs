@@ -61,7 +61,7 @@ pub fn copy_files_to_clipboard(paths: &[String]) -> Result<(), Error> {
       let () = msg_send![pool, drain];
       return Err(Error::new(
         ErrorKind::InvalidInput,
-        "No valid URLs could be created from the paths",
+        "No valid URIs could be created from the paths",
       ));
     }
 
@@ -72,7 +72,14 @@ pub fn copy_files_to_clipboard(paths: &[String]) -> Result<(), Error> {
       count:urls.len() as NSUInteger
     ];
 
-    // クリップボードにファイルURLの配列を書き込み（戻り値を統一）
+    // pboardTypeに "public.file-url" 型のフィルタリストを使用
+    let file_url_type = NSString::alloc(nil).init_str("public.file-url");
+    let types_array = NSArray::arrayWithObject(nil, file_url_type);
+
+    // クリップボードに特定の型を宣言
+    let _: () = msg_send![pasteboard, declareTypes:types_array owner:nil];
+
+    // クリップボードにファイルURLの配列を書き込み
     let success: i8 = msg_send![pasteboard, writeObjects:urls_array];
 
     // AutoreleasePool をドレイン
@@ -179,7 +186,7 @@ mod tests {
     // エラーメッセージをチェック
     if let Err(err) = result {
       assert!(err.kind() == ErrorKind::InvalidInput);
-      assert!(err.to_string().contains("No valid URLs"));
+      assert!(err.to_string().contains("No valid URIs"));
     }
   }
 }
