@@ -1,6 +1,6 @@
 {
   "name": "electron-pan-clip",
-  "version": "0.0.29",
+  "version": "0.0.30",
   "main": "index.js",
   "types": "index.d.ts",
   "repository": "https://github.com/tktcorporation/electron-pan-clip",
