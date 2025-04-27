@@ -2,7 +2,7 @@
 
 use cocoa::appkit::NSPasteboard;
 use cocoa::base::{id, nil};
-use cocoa::foundation::{NSArray, NSString};
+use cocoa::foundation::{NSArray, NSAutoreleasePool, NSString, NSUInteger};
 use objc::{class, msg_send, sel, sel_impl};
 use std::io::{Error, ErrorKind};
 use std::path::Path;
@@ -10,6 +10,9 @@ use std::path::Path;
 pub fn copy_files_to_clipboard(paths: &[String]) -> Result<(), Error> {
   // NSPasteboard の取得
   unsafe {
+    // AutoreleasePool を作成
+    let pool: id = msg_send![class!(NSAutoreleasePool), new];
+
     let pasteboard = NSPasteboard::generalPasteboard(nil);
 
     // 既存のデータをクリア
@@ -54,26 +57,28 @@ pub fn copy_files_to_clipboard(paths: &[String]) -> Result<(), Error> {
     }
 
     if urls.is_empty() {
+      // プールをドレインしてから戻る
+      let () = msg_send![pool, drain];
       return Err(Error::new(
         ErrorKind::InvalidInput,
         "No valid URLs could be created from the paths",
       ));
     }
 
-    // NSArray にURLを追加
-    let urls_array = NSArray::arrayWithObjects(nil, &urls);
+    // NSArray にURLを追加（正しい方法で配列を生成）
+    let urls_array: id = msg_send![
+      class!(NSArray),
+      arrayWithObjects:urls.as_ptr()
+      count:urls.len() as NSUInteger
+    ];
 
-    // クリップボードにファイルURLの配列を書き込み
-    #[cfg(target_arch = "x86_64")]
-    let success = {
-      let success_i8: i8 = pasteboard.writeObjects(urls_array);
-      success_i8 != 0
-    };
+    // クリップボードにファイルURLの配列を書き込み（戻り値を統一）
+    let success: i8 = msg_send![pasteboard, writeObjects:urls_array];
 
-    #[cfg(target_arch = "aarch64")]
-    let success: bool = pasteboard.writeObjects(urls_array);
+    // AutoreleasePool をドレイン
+    let () = msg_send![pool, drain];
 
-    if success {
+    if success != 0 {
       println!("Copied files to clipboard on macOS: {:?}", paths);
       Ok(())
     } else {
