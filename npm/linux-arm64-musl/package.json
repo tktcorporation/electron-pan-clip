@@ -1,0 +1,27 @@
+{
+  "name": "electron-pan-clip-linux-arm64-musl",
+  "version": "0.0.31",
+  "os": [
+    "linux"
+  ],
+  "cpu": [
+    "arm64"
+  ],
+  "main": "electron-pan-clip.linux-arm64-musl.node",
+  "files": [
+    "electron-pan-clip.linux-arm64-musl.node"
+  ],
+  "description": "copy file paths to clipboard",
+  "license": "MIT",
+  "engines": {
+    "node": ">= 20"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  },
+  "libc": [
+    "musl"
+  ],
+  "repository": "https://github.com/tktcorporation/electron-pan-clip"
+} 
