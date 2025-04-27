@@ -1,5 +1,7 @@
+import { execSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
+import { platform } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { copyFiles, helloWorld } from "../../index";
@@ -79,26 +81,17 @@ describe("electron-pan-clip", () => {
 		});
 
 		it("should handle non-existent files", () => {
-			// 存在しないファイルパスの配列
 			const nonExistentFiles = [
-				"/path/to/non/existent/file1.txt",
+				"/path/to/nonexistent/file.png",
 				"/another/non/existent/file2.txt",
 			];
 
-			try {
-				// 現在の実装ではエラーが発生しないようなので、エラーが発生しないことを確認
-				copyFiles(nonExistentFiles);
-			} catch (error: unknown) {
-				// X11 server connection エラーの場合はスキップ
-				if (
-					error instanceof Error &&
-					error.message.includes("X11 server connection timed out")
-				) {
-					console.log("⚠️ テストをスキップ: X11サーバー接続の問題");
-					return;
-				}
-
-				throw error;
+			if (platform() === "darwin" || platform() === "linux") {
+				expect(() => copyFiles(nonExistentFiles)).toThrowError(
+					/No valid URIs could be created from the paths/,
+				);
+			} else {
+				expect(() => copyFiles(nonExistentFiles)).not.toThrow();
 			}
 		});
 	});
