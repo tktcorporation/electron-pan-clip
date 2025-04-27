@@ -1,6 +1,6 @@
 {
   "name": "electron-pan-clip-linux-arm64-gnu",
-  "version": "0.0.31",
+  "version": "0.0.32",
   "os": [
     "linux"
   ],
@@ -24,4 +24,4 @@
     "glibc"
   ],
   "repository": "https://github.com/tktcorporation/electron-pan-clip"
-} 
+}
