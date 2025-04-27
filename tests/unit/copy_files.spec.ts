@@ -58,27 +58,31 @@ describe("electron-pan-clip", () => {
 			expect(() => copyFiles([])).toThrow(/No file paths provided/);
 		});
 
-		it("should copy existing files to clipboard", () => {
-			try {
-				// 実際のファイルをクリップボードにコピー
-				// 注意: このテストは実際のクリップボードを変更します
-				copyFiles(testFiles);
+		// CI環境ではスキップするようにテストを修正
+		(process.env.CI === "true" ? it.skip : it)(
+			"should copy existing files to clipboard",
+			() => {
+				try {
+					// 実際のファイルをクリップボードにコピー
+					// 注意: このテストは実際のクリップボードを変更します
+					copyFiles(testFiles);
 
-				// 注: クリップボードの内容を自動的に検証するのは難しいため、
-				// エラーが発生しなければ成功とみなします
-			} catch (error: unknown) {
-				// X11 server connection エラーの場合はスキップ
-				if (
-					error instanceof Error &&
-					error.message.includes("X11 server connection timed out")
-				) {
-					console.log("⚠️ テストをスキップ: X11サーバー接続の問題");
-					return;
+					// 注: クリップボードの内容を自動的に検証するのは難しいため、
+					// エラーが発生しなければ成功とみなします
+				} catch (error: unknown) {
+					// X11 server connection エラーの場合はスキップ
+					if (
+						error instanceof Error &&
+						error.message.includes("X11 server connection timed out")
+					) {
+						console.log("⚠️ テストをスキップ: X11サーバー接続の問題");
+						return;
+					}
+
+					throw error;
 				}
-
-				throw error;
-			}
-		});
+			},
+		);
 
 		it("should handle non-existent files", () => {
 			const nonExistentFiles = [

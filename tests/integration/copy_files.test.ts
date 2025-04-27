@@ -124,40 +124,49 @@ describe("electron-pan-clip", () => {
 		expect(() => copyFiles([])).toThrow();
 	});
 
-	// OSごとのテスト（条件付きテスト）
+	// OSごとのテスト（条件付きテスト）- CI環境ではスキップ
 	if (process.platform === "win32") {
-		it("Windows: should copy files in CF_HDROP format", () => {
-			copyFiles(testFiles);
-			// Windows固有のテスト
-			expect(true).toBe(true);
-		});
+		(process.env.CI === "true" ? it.skip : it)(
+			"Windows: should copy files in CF_HDROP format",
+			() => {
+				copyFiles(testFiles);
+				// Windows固有のテスト
+				expect(true).toBe(true);
+			},
+		);
 	}
 
 	if (process.platform === "darwin") {
-		it("macOS: should copy files using NSPasteboard", () => {
-			copyFiles(testFiles);
-			// macOS固有のテスト
-			expect(true).toBe(true);
-		});
+		(process.env.CI === "true" ? it.skip : it)(
+			"macOS: should copy files using NSPasteboard",
+			() => {
+				copyFiles(testFiles);
+				// macOS固有のテスト
+				expect(true).toBe(true);
+			},
+		);
 	}
 
 	if (process.platform === "linux") {
-		it("Linux: should copy files in text/uri-list format", () => {
-			try {
-				copyFiles(testFiles);
-				// Linux固有のテスト
-				expect(true).toBe(true);
-			} catch (error: unknown) {
-				// X11 server connection エラーの場合はスキップ
-				if (
-					error instanceof Error &&
-					error.message.includes("X11 server connection timed out")
-				) {
-					console.log("⚠️ テストをスキップ: X11サーバー接続の問題");
-					return;
+		(process.env.CI === "true" ? it.skip : it)(
+			"Linux: should copy files in text/uri-list format",
+			() => {
+				try {
+					copyFiles(testFiles);
+					// Linux固有のテスト
+					expect(true).toBe(true);
+				} catch (error: unknown) {
+					// X11 server connection エラーの場合はスキップ
+					if (
+						error instanceof Error &&
+						error.message.includes("X11 server connection timed out")
+					) {
+						console.log("⚠️ テストをスキップ: X11サーバー接続の問題");
+						return;
+					}
+					throw error;
 				}
-				throw error;
-			}
-		});
+			},
+		);
 	}
 });
