@@ -34,6 +34,12 @@ copyFiles(filePaths);
 console.log('File paths copied to clipboard successfully');
 ```
 
+## Demo
+
+A demo application is available for testing the functionality. If you want to see it in action, check out the following repository:
+
+- [copy-file-paths-electron](https://github.com/tktcorporation/copy-file-paths-electron) - Demo Electron application
+
 ## Platform Support
 
 - ✅ macOS: Supported and tested
