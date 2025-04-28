@@ -1,4 +1,20 @@
 # Changelog
+## [unreleased]
+
+### Documentation
+
+
+
+- Update docsmentations ([d7c9c55](https://github.com/tktcorporation/electron-pan-clip/commit/d7c9c55958144d9bbd7ce80f87a77ab1b8c6e66f))
+
+## [0.0.32] - 2025-04-27
+
+## [0.0.31] - 2025-04-27
+
+## [0.0.30] - 2025-04-27
+
+## [0.0.29] - 2025-04-27
+
 ## [0.0.10] - 2025-04-21
 
 ### Bug Fixes

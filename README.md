@@ -1,195 +1,121 @@
 # electron-pan-clip
 
-マルチプラットフォーム対応のElectronアプリケーション用ファイルクリップボードユーティリティ
+A cross-platform file path clipboard utility for Electron applications
 
-## 概要
+## Overview
 
-このライブラリは、Electronアプリケーションでファイルをクリップボードにコピーするための機能を提供します。Windows、macOS、Linuxの各プラットフォームに対応しています。
+This library provides functionality for copying file paths to the clipboard in Electron applications. It supports Windows, macOS, and Linux platforms. Note that this library copies file paths (references) to the clipboard, not the actual file contents.
 
-## インストール
+Built with [napi-rs](https://napi.rs/) and Rust, this library offers:
+- High performance native implementation
+- Full TypeScript support
+- Cross-platform compatibility
+- Memory safety and thread safety
+
+### Platform Support
+
+- ✅ macOS: Supported and tested
+- ✅ Windows: Supported and tested
+- ⚠️ Linux: Supported but not yet tested
+
+## Installation
 
 ```bash
 yarn add electron-pan-clip
 ```
 
-または
+or
 
 ```bash
 npm install electron-pan-clip
 ```
 
-## 使用方法
+## Usage
 
-```javascript
-const { copyFiles } = require('electron-pan-clip');
+```typescript
+import { copyFiles } from 'electron-pan-clip';
 
-// 複数のファイルをクリップボードにコピー
-try {
-  const filePaths = ['/path/to/file1.txt', '/path/to/file2.jpg'];
-  copyFiles(filePaths);
-  console.log('ファイルをクリップボードにコピーしました');
-} catch (error) {
-  console.error('エラーが発生しました:', error);
-}
+// Copy file paths to clipboard
+const filePaths: string[] = ['/path/to/file1.txt', '/path/to/file2.jpg'];
+copyFiles(filePaths);
+console.log('File paths copied to clipboard successfully');
 ```
 
-詳細な使用例は [examples](./examples) ディレクトリを参照してください。
+For detailed examples, please refer to the [examples](./examples) directory.
 
-## pnpm の使い方
+## Development with pnpm
 
-このプロジェクトはpnpm対応になりました。以下のコマンドで開発を始めることができます：
+This project supports pnpm. You can start development with the following commands:
 
 ```bash
-# 依存関係のインストール
+# Install dependencies
 pnpm install
 
-# デバッグビルド
+# Build debug version
 pnpm build:debug
 
-# リリースビルド
+# Build release version
 pnpm build
 
-# テスト実行
+# Run tests
 pnpm test
 
-# ドキュメント生成
+# Generate documentation
 pnpm docs
 ```
 
-## 開発
+## Development
 
-このプロジェクトは[napi-rs](https://napi.rs/)を使用しており、Node.jsのネイティブアドオンをRustで作成します。
+This project uses [napi-rs](https://napi.rs/) to create Node.js native addons in Rust.
 
-詳細な開発情報は [docs/README.md](./docs/README.md) を参照してください。
+For detailed development information, please refer to [docs/README.md](./docs/README.md).
 
-### セットアップ
+### Setup
 
 ```bash
-# 依存関係のインストール
+# Install dependencies
 yarn install
 
-# ビルド
+# Build
 yarn build
 
-# テスト
+# Run tests
 yarn test
 ```
 
-## 開発コンテナでのX11サポート
+## X11 Support in Development Container
 
-開発コンテナでLinuxのX11関連のテストを実行するための設定手順：
+Setup instructions for running Linux X11-related tests in the development container:
 
-1. 必要な依存関係のインストール
+1. Install required dependencies
    ```bash
    just install-linux-deps
    ```
 
-2. Xvfbを使用したテストの実行
+2. Run tests with Xvfb
    ```bash
    just test-with-xvfb
    ```
 
-Xvfbは仮想フレームバッファを提供するX11サーバーで、GUIを持たずにX11アプリケーションを実行できます。
-これにより、ヘッドレス環境（実際のディスプレイがない環境）でもクリップボード操作のテストが可能になります。
+Xvfb provides a virtual framebuffer X11 server, allowing you to run X11 applications without a GUI.
+This enables clipboard operation testing in headless environments (environments without a physical display).
 
-### トラブルシューティング
+### Troubleshooting
 
-X11関連の問題が発生した場合は、以下を確認してください：
+If you encounter X11-related issues, check the following:
 
-1. X11の依存関係が正しくインストールされているか
+1. Verify X11 dependencies are correctly installed
    ```bash
    dpkg -l | grep x11
    ```
 
-2. Xvfbが正常に動作しているか
+2. Check if Xvfb is running properly
    ```bash
    Xvfb :99 -screen 0 1280x1024x24 &
    export DISPLAY=:99
-   xdpyinfo | head  # X11サーバーの情報を表示
+   xdpyinfo | head  # Display X11 server information
    ```
 
-## ライセンス
+## License
 
 MIT
-
-# npm自動パブリッシュワークフロー
-
-このリポジトリには、npmパッケージを自動的にパブリッシュするためのGitHub Actionsワークフローが含まれています。
-
-## セットアップ手順
-
-### 1. NPMトークンの設定
-
-1. npmアカウントで新しいアクセストークンを生成します：
-   - [npmのウェブサイト](https://www.npmjs.com/)にログイン
-   - 右上のプロフィールアイコン → Access Tokens → Generate New Token
-   - トークンをコピー
-
-2. GitHubリポジトリに`NPM_TOKEN`シークレットを追加します：
-   - リポジトリの「Settings」→「Secrets and variables」→「Actions」
-   - 「New repository secret」をクリック
-   - 名前: `NPM_TOKEN`、値: コピーしたnpmトークン
-
-### 2. コンベンショナルコミットの利用
-
-このワークフローでは、[git-cliff](https://github.com/orhun/git-cliff)を使用してコミット履歴から自動的にCHANGELOGを生成します。効果的に活用するために、以下のコミットメッセージ形式（[Conventional Commits](https://www.conventionalcommits.org/)）を採用してください：
-
-```
-<type>[(optional scope)]: <description>
-
-[optional body]
-
-[optional footer]
-```
-
-主なタイプ:
-- `feat`: 新機能の追加
-- `fix`: バグ修正
-- `doc`: ドキュメントの変更のみ
-- `perf`: パフォーマンスを向上させるコード変更
-- `refactor`: バグ修正でも機能追加でもないコード変更
-- `style`: コードの意味に影響しない変更（空白、フォーマット、セミコロン追加など）
-- `test`: テストの追加や修正
-- `chore`: その他の変更（ビルドプロセスなど）
-
-例:
-```
-feat(core): ファイルコピー機能の追加
-fix(windows): Windowsプラットフォームでのパス解決の問題を修正
-doc: READMEの更新
-```
-
-**注意**:
-- スコープを含めると、変更されたコンポーネントやモジュールを明示できます（例: `feat(core):`, `fix(windows):`）
-- 破壊的変更を含む場合は、コミットタイプやスコープの後に `!` を追加するか、フッターに `BREAKING CHANGE:` を記述します
-
-## リリースワークフロー
-
-このリポジトリには2種類のリリースワークフローがあります：
-
-### 1. 自動リリース（Auto Release）
-
-`package.json`のバージョン変更を検出して自動的にリリースプロセスを開始します：
-
-1. **バージョン変更検出**: mainブランチで`package.json`のバージョン変更を検出
-2. **CHANGELOG生成**: git-cliffを使用してコミット履歴からCHANGELOGを自動生成
-3. **リリース作成**: GitHubリリースを作成し、タグを付与
-4. **npmパブリッシュ**: npmレジストリにパッケージをパブリッシュ
-5. **スモークテスト**: パブリッシュ後にインストールと基本機能のテストを実行
-
-このワークフローを使用するには、単に`package.json`のバージョンを更新してmainブランチにプッシュするだけです。以降のプロセスは自動的に実行されます。
-
-### 2. 手動リリース（Version Bump）
-
-手動でバージョン更新とリリースを行うワークフローです：
-
-1. GitHubリポジトリの「Actions」タブを開く
-2. 「Version Bump」ワークフローを選択
-3. 「Run workflow」をクリック
-4. 更新タイプ（patch, minor, major）を選択して実行
-
-これにより以下の処理が実行されます：
-- パッケージバージョンが更新される
-- git-cliffによるCHANGELOGの自動生成
-- 変更のコミットとタグ作成
-- 新しいタグのプッシュ

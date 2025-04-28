@@ -3,7 +3,27 @@
   "version": "0.0.32",
   "main": "index.js",
   "types": "index.d.ts",
-  "repository": "https://github.com/tktcorporation/electron-pan-clip",
+  "description": "A cross-platform file path clipboard utility for Electron applications. Built with napi-rs and Rust, offering high performance and full TypeScript support. Currently supports macOS and Windows (Linux support is planned but not yet tested).",
+  "keywords": [
+    "electron",
+    "clipboard",
+    "file-path",
+    "napi-rs",
+    "rust",
+    "typescript",
+    "cross-platform",
+    "macos",
+    "windows",
+    "linux"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tktcorporation/electron-pan-clip"
+  },
+  "homepage": "https://github.com/tktcorporation/electron-pan-clip#readme",
+  "bugs": {
+    "url": "https://github.com/tktcorporation/electron-pan-clip/issues"
+  },
   "publishConfig": {
     "registry": "https://registry.npmjs.org/",
     "access": "public"
@@ -33,6 +53,7 @@
     "@biomejs/biome": "^1.9.4",
     "@napi-rs/cli": "^2.18.4",
     "@types/node": "^22.15.2",
+    "git-cliff": "^2.8.0",
     "jsdoc": "^4.0.4",
     "minami": "^1.2.3",
     "taffydb": "^2.7.3",
@@ -50,6 +71,7 @@
     "universal": "napi universal",
     "version": "napi version",
     "docs": "jsdoc -c jsdoc.json",
+    "update-changelog": "git-cliff -c ./cliff.toml -o CHANGELOG.md",
     "check": "npm run check:format && npm run check:lint",
     "check:format": "npm run check:format:rust && npm run check:format:ts",
     "check:lint": "npm run check:lint:rust && npm run check:lint:ts",
@@ -65,6 +87,5 @@
     "lint:fix": "biome check --fix --unsafe",
     "biome": "biome"
   },
-  "description": "copy file paths to clipboard",
   "packageManager": "yarn@4.9.1"
 }

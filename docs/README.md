@@ -1,75 +1,100 @@
 # electron-pan-clip
 
-マルチプラットフォーム対応のElectronアプリケーション用ファイルクリップボードユーティリティ
+A cross-platform file clipboard utility for Electron applications
 
-## プロジェクト構造
+## Project Structure
 
 ```
 electron-pan-clip/
-├── docs/               # ドキュメント
-│   ├── api/            # API ドキュメント
-│   └── README.md       # プロジェクト概要
-├── examples/           # 使用例
-├── src/                # ソースコード
-│   ├── platforms/      # プラットフォーム別実装
-│   │   ├── windows/    # Windows実装
-│   │   ├── macos/      # macOS実装
-│   │   └── linux/      # Linux実装
-│   └── lib.rs          # メインライブラリ実装
-├── tests/              # テスト
-│   ├── unit/           # ユニットテスト
-│   └── integration/    # 統合テスト
-├── index.js            # JavaScript APIエントリポイント
-└── index.d.ts          # TypeScript型定義
+├── src/                # Source Code
+├── tests/              # Tests
+├── examples/           # Usage Examples
+├── docs/               # Documentation
+├── .devcontainer/      # Development Container Configuration
+├── Cargo.toml          # Rust Project Configuration
+├── package.json        # Node.js Project Configuration
+├── index.js            # JavaScript API Entry Point
+└── index.d.ts          # TypeScript Type Definitions
 ```
 
-## 開発
+## Development
 
-### 依存関係のインストール
+### Prerequisites
+
+- Node.js (version specified in `.node-version`)
+- Rust (latest stable)
+- Yarn (latest stable)
+
+### Installing Dependencies
 
 ```bash
 yarn install
 ```
 
-### ビルド
+### Building
 
 ```bash
 yarn build
 ```
 
-### テスト
+### Testing
 
 ```bash
 yarn test
 ```
 
-## プラットフォーム別の実装に関する注意点
+## Platform-Specific Implementation Notes
 
-### Windows実装
+### Windows Implementation
 
-Windows実装では、ファイルをクリップボードにコピーするために、`CF_HDROP`形式と`DROPFILES`構造体を使用しています。主な特徴:
+The Windows implementation uses `CF_HDROP` format and `DROPFILES` structure for copying files to the clipboard. Key features:
 
-- `windows-sys` crate（バージョン0.52以上）を使用
-- `CF_HDROP`形式（値 = 15）を明示的に定義
-- `DROPFILES`構造体を手動で実装
-- ファイルパスをUTF-16（ワイド文字列）に変換してNULL終端
-- グローバルメモリの確保、ロック/アンロックを適切に管理
+- Uses `windows-sys` crate
+- Explicitly defines `CF_HDROP` format (value = 15)
+- Manually implements `DROPFILES` structure
+- Converts file paths to UTF-16 (wide string) with NULL termination
+- Properly manages global memory allocation, locking/unlocking
 
-注意点:
-- クロスプラットフォームのビルド時には `cargo-xwin` ツールと、適切なターゲット（`x86_64-pc-windows-msvc`など）が必要
-- エラーハンドリングが充実しており、メモリリークを防止
-- エラー発生時には詳細なエラーメッセージを提供
+### macOS Implementation
 
-`rustup target add x86_64-pc-windows-msvc` でWindows向けのクロスコンパイル環境を準備できます。
+The macOS implementation uses `NSPasteboard` and `NSURL` for copying files to the clipboard. Key features:
 
-### macOS実装
+- Uses `objc` and `cocoa` crates
+- Implements proper memory management with `NSAutoreleasePool`
+- Handles both `public.file-url` and `NSFilenamesPboardType` formats
+- Provides comprehensive error handling
 
-（内容を追加予定）
+### Linux Implementation
 
-### Linux実装
+The Linux implementation uses `text/uri-list` format for copying files to the clipboard. Key features:
 
-（内容を追加予定）
+- Uses `arboard` crate for clipboard operations
+- Converts file paths to `file://` URIs
+- Handles both X11 and Wayland environments
+- Provides fallback mechanisms for different clipboard implementations
 
-## ライセンス
+## Development Environment
+
+This project uses a development container for consistent development environment. The configuration is located in `.devcontainer/`.
+
+### Cross-Compilation
+
+Cross-compilation is configured in `Cross.toml`. The project supports building for multiple platforms:
+
+- Windows (x86_64, arm64)
+- macOS (x86_64, arm64)
+- Linux (x86_64, arm64)
+
+### Testing
+
+- Unit tests are written in Rust and can be run with `cargo test`
+- Integration tests are written in TypeScript and can be run with `yarn test`
+
+## References
+
+- [Rust Cross-Compilation Documentation](https://rust-lang.github.io/rustup/cross-compilation.html)
+- [napi-rs Documentation](https://napi.rs/docs/introduction/building-for-multiple-platforms)
+
+## License
 
 MIT 
