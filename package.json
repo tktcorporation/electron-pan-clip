@@ -1,6 +1,6 @@
 {
   "name": "clip-filepaths",
-  "version": "0.0.32",
+  "version": "0.1.0",
   "main": "index.js",
   "types": "index.d.ts",
   "description": "A cross-platform file path clipboard utility for Electron applications. Built with napi-rs and Rust, offering high performance and full TypeScript support. Currently supports macOS and Windows (Linux support is planned but not yet tested).",
