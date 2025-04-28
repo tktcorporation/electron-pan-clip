@@ -788,6 +788,22 @@ __metadata:
   languageName: node
   linkType: hard
 
+"clip-filepaths@workspace:.":
+  version: 0.0.0-use.local
+  resolution: "clip-filepaths@workspace:."
+  dependencies:
+    "@biomejs/biome": "npm:^1.9.4"
+    "@napi-rs/cli": "npm:^2.18.4"
+    "@types/node": "npm:^22.15.2"
+    git-cliff: "npm:^2.8.0"
+    jsdoc: "npm:^4.0.4"
+    minami: "npm:^1.2.3"
+    taffydb: "npm:^2.7.3"
+    typescript: "npm:^5.8.3"
+    vitest: "npm:^3.1.2"
+  languageName: unknown
+  linkType: soft
+
 "color-convert@npm:^2.0.1":
   version: 2.0.1
   resolution: "color-convert@npm:2.0.1"
@@ -840,22 +856,6 @@ __metadata:
   checksum: 10c0/26f364ebcdb6395f95124fda411f63137a4bfb5d3a06453f7f23dfe52502905bd84e0488172e0f9ec295fdc45f05c23d5d91baf16bd26f0fe9acd777a188dc39
   languageName: node
   linkType: hard
-
-"clip-filepaths@workspace:.":
-  version: 0.0.0-use.local
-  resolution: "clip-filepaths@workspace:."
-  dependencies:
-    "@biomejs/biome": "npm:^1.9.4"
-    "@napi-rs/cli": "npm:^2.18.4"
-    "@types/node": "npm:^22.15.2"
-    git-cliff: "npm:^2.8.0"
-    jsdoc: "npm:^4.0.4"
-    minami: "npm:^1.2.3"
-    taffydb: "npm:^2.7.3"
-    typescript: "npm:^5.8.3"
-    vitest: "npm:^3.1.2"
-  languageName: unknown
-  linkType: soft
 
 "emoji-regex@npm:^8.0.0":
   version: 8.0.0
