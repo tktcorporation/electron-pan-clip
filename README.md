@@ -1,30 +1,21 @@
 # electron-pan-clip
 
-A cross-platform file path clipboard utility for Electron applications
+A cross-platform file path clipboard utility for Electron applications that supports copying multiple file paths at once
 
 ## Overview
 
 This library provides functionality for copying file paths to the clipboard in Electron applications. It supports Windows, macOS, and Linux platforms. Note that this library copies file paths (references) to the clipboard, not the actual file contents.
 
 Built with [napi-rs](https://napi.rs/) and Rust, this library offers:
-- High performance native implementation
+- **Multiple file path support**: This library allows copying multiple file paths at once
 - Full TypeScript support
 - Cross-platform compatibility
-- Memory safety and thread safety
 
-### Platform Support
+## Motivation
 
-- ✅ macOS: Supported and tested
-- ✅ Windows: Supported and tested
-- ⚠️ Linux: Supported but not yet tested
+When developing Electron applications, I needed a way to copy multiple photo file paths to the clipboard at once. Existing packages only supported copying single file paths, which was inefficient for tasks like photo management. This library was created to fill that gap and provide a simple solution for batch file path operations.
 
 ## Installation
-
-```bash
-yarn add electron-pan-clip
-```
-
-or
 
 ```bash
 npm install electron-pan-clip
@@ -41,81 +32,32 @@ copyFiles(filePaths);
 console.log('File paths copied to clipboard successfully');
 ```
 
-For detailed examples, please refer to the [examples](./examples) directory.
+## Platform Support
 
-## Development with pnpm
+- ✅ macOS: Supported and tested
+- ✅ Windows: Supported and tested
+- ⚠️ Linux: Supported but not yet tested
 
-This project supports pnpm. You can start development with the following commands:
+## Contributing
 
-```bash
-# Install dependencies
-pnpm install
+We welcome contributions! Please read our [Contributing Guidelines](./docs/CONTRIBUTING.md) before submitting pull requests.
 
-# Build debug version
-pnpm build:debug
+## Support
 
-# Build release version
-pnpm build
+If you encounter any issues or have questions, please:
+1. Check the [existing issues](https://github.com/tktcorporation/electron-pan-clip/issues)
+2. Create a new issue if your problem hasn't been reported
 
-# Run tests
-pnpm test
+## Related Projects
 
-# Generate documentation
-pnpm docs
-```
-
-## Development
-
-This project uses [napi-rs](https://napi.rs/) to create Node.js native addons in Rust.
-
-For detailed development information, please refer to [docs/README.md](./docs/README.md).
-
-### Setup
-
-```bash
-# Install dependencies
-yarn install
-
-# Build
-yarn build
-
-# Run tests
-yarn test
-```
-
-## X11 Support in Development Container
-
-Setup instructions for running Linux X11-related tests in the development container:
-
-1. Install required dependencies
-   ```bash
-   just install-linux-deps
-   ```
-
-2. Run tests with Xvfb
-   ```bash
-   just test-with-xvfb
-   ```
-
-Xvfb provides a virtual framebuffer X11 server, allowing you to run X11 applications without a GUI.
-This enables clipboard operation testing in headless environments (environments without a physical display).
-
-### Troubleshooting
-
-If you encounter X11-related issues, check the following:
-
-1. Verify X11 dependencies are correctly installed
-   ```bash
-   dpkg -l | grep x11
-   ```
-
-2. Check if Xvfb is running properly
-   ```bash
-   Xvfb :99 -screen 0 1280x1024x24 &
-   export DISPLAY=:99
-   xdpyinfo | head  # Display X11 server information
-   ```
+- [napi-rs](https://napi.rs/) - Node.js native addon framework
+- [Electron](https://www.electronjs.org/) - Cross-platform desktop application framework
 
 ## License
 
-MIT
+This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.
+
+## Acknowledgments
+
+- Thanks to all contributors who have helped improve this project
+- Special thanks to the napi-rs team for their excellent framework
