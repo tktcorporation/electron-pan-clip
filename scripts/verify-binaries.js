@@ -25,7 +25,7 @@ let hasError = false;
 for (const platform of platforms) {
 	const binaryPath = path.join(
 		".", // Look in the current directory
-		`electron-pan-clip.${platform}.node`,
+		`clip-filepaths.${platform}.node`,
 	);
 
 	console.log(`検証中: ${binaryPath}`);

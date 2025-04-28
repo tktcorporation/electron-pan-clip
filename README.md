@@ -1,6 +1,8 @@
-# electron-pan-clip
+# clip-filepaths
 
-A cross-platform file path clipboard utility for Electron applications that supports copying multiple file paths at once
+A cross-platform file path clipboard utility for Electron applications that supports copying multiple file paths at once.
+
+<img height="100" src="https://github.com/user-attachments/assets/836b665b-5a53-4b22-b8dc-4cc77a106999" >
 
 ## Overview
 
@@ -18,13 +20,13 @@ When developing Electron applications, I needed a way to copy multiple photo fil
 ## Installation
 
 ```bash
-npm install electron-pan-clip
+npm install clip-filepaths
 ```
 
 ## Usage
 
 ```typescript
-import { copyFiles } from 'electron-pan-clip';
+import { copyFiles } from 'clip-filepaths';
 
 // Copy file paths to clipboard
 const filePaths: string[] = ['/path/to/file1.txt', '/path/to/file2.jpg'];
@@ -45,7 +47,7 @@ We welcome contributions! Please read our [Contributing Guidelines](./docs/CONTR
 ## Support
 
 If you encounter any issues or have questions, please:
-1. Check the [existing issues](https://github.com/tktcorporation/electron-pan-clip/issues)
+1. Check the [existing issues](https://github.com/tktcorporation/clip-filepaths/issues)
 2. Create a new issue if your problem hasn't been reported
 
 ## Related Projects

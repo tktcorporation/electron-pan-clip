@@ -23,8 +23,8 @@ async function createTempFile(): Promise<TempFile> {
 	};
 }
 
-describe("electron-pan-clip", () => {
-	const tmpDir = path.join(os.tmpdir(), "electron-pan-clip-test");
+describe("clip-filepaths", () => {
+	const tmpDir = path.join(os.tmpdir(), "clip-filepaths-test");
 	const testFiles: string[] = [];
 
 	// テスト用の一時ファイルを作成

@@ -1,6 +1,6 @@
 # Release Workflow
 
-This document describes the release process for electron-pan-clip.
+This document describes the release process for clip-filepaths.
 
 ## NPM Token Configuration
 

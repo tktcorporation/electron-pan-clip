@@ -1,5 +1,5 @@
 {
-  "name": "electron-pan-clip-darwin-x64",
+  "name": "clip-filepaths-darwin-x64",
   "version": "0.0.32",
   "os": [
     "darwin"
@@ -7,9 +7,9 @@
   "cpu": [
     "x64"
   ],
-  "main": "electron-pan-clip.darwin-x64.node",
+  "main": "clip-filepaths.darwin-x64.node",
   "files": [
-    "electron-pan-clip.darwin-x64.node"
+    "clip-filepaths.darwin-x64.node"
   ],
   "description": "copy file paths to clipboard",
   "license": "MIT",
@@ -20,5 +20,5 @@
     "registry": "https://registry.npmjs.org/",
     "access": "public"
   },
-  "repository": "https://github.com/tktcorporation/electron-pan-clip"
+  "repository": "https://github.com/tktcorporation/clip-filepaths"
 }

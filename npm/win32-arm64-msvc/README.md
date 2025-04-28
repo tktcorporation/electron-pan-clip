@@ -1,3 +1,3 @@
-# `electron-pan-clip-win32-arm64-msvc`
+# `clip-filepaths-win32-arm64-msvc`
 
-This is the **aarch64-pc-windows-msvc** binary for `electron-pan-clip`
+This is the **aarch64-pc-windows-msvc** binary for `clip-filepaths`

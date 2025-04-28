@@ -1,5 +1,5 @@
 {
-  "name": "electron-pan-clip-win32-x64-msvc",
+  "name": "clip-filepaths-win32-x64-msvc",
   "version": "0.0.32",
   "os": [
     "win32"
@@ -7,9 +7,9 @@
   "cpu": [
     "x64"
   ],
-  "main": "electron-pan-clip.win32-x64-msvc.node",
+  "main": "clip-filepaths.win32-x64-msvc.node",
   "files": [
-    "electron-pan-clip.win32-x64-msvc.node"
+    "clip-filepaths.win32-x64-msvc.node"
   ],
   "description": "copy file paths to clipboard",
   "license": "MIT",
@@ -20,5 +20,5 @@
     "registry": "https://registry.npmjs.org/",
     "access": "public"
   },
-  "repository": "https://github.com/tktcorporation/electron-pan-clip"
+  "repository": "https://github.com/tktcorporation/clip-filepaths"
 }

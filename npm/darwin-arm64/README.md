@@ -1,3 +1,3 @@
-# `electron-pan-clip-darwin-arm64`
+# `clip-filepaths-darwin-arm64`
 
-This is the **aarch64-apple-darwin** binary for `electron-pan-clip`
+This is the **aarch64-apple-darwin** binary for `clip-filepaths`

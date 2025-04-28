@@ -6,7 +6,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { copyFiles, helloWorld } from "../../index";
 
-describe("electron-pan-clip", () => {
+describe("clip-filepaths", () => {
 	describe("helloWorld", () => {
 		it("should return a platform-specific greeting", () => {
 			const result = helloWorld();

@@ -1,6 +1,6 @@
 # Contributing Guidelines
 
-Thank you for your interest in contributing to electron-pan-clip! This document provides guidelines for contributing to the project.
+Thank you for your interest in contributing to clip-filepaths! This document provides guidelines for contributing to the project.
 
 ## Commit Message Format
 
@@ -75,4 +75,4 @@ doc: Update README
 - Ensure CI checks pass
 - Request review from maintainers
 
-Thank you for contributing to electron-pan-clip! 
+Thank you for contributing to clip-filepaths! 

@@ -212,7 +212,7 @@ dist/
 *.swo
 
 # Build artifacts for this specific project
-electron-pan-clip*.node
+clip-filepaths*.node
 
 # Documentation build output
 docs/api/

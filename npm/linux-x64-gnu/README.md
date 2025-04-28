@@ -1,3 +1,3 @@
-# `electron-pan-clip-linux-x64-gnu`
+# `clip-filepaths-linux-x64-gnu`
 
-This is the **x86_64-unknown-linux-gnu** binary for `electron-pan-clip`
+This is the **x86_64-unknown-linux-gnu** binary for `clip-filepaths`

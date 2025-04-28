@@ -1,3 +1,3 @@
-# `electron-pan-clip-linux-arm64-gnu`
+# `clip-filepaths-linux-arm64-gnu`
 
-This is the **aarch64-unknown-linux-gnu** binary for `electron-pan-clip` 
+This is the **aarch64-unknown-linux-gnu** binary for `clip-filepaths` 

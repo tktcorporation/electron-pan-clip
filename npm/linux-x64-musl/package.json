@@ -1,5 +1,5 @@
 {
-  "name": "electron-pan-clip-linux-x64-musl",
+  "name": "clip-filepaths-linux-x64-musl",
   "version": "0.0.32",
   "os": [
     "linux"
@@ -7,9 +7,9 @@
   "cpu": [
     "x64"
   ],
-  "main": "electron-pan-clip.linux-x64-musl.node",
+  "main": "clip-filepaths.linux-x64-musl.node",
   "files": [
-    "electron-pan-clip.linux-x64-musl.node"
+    "clip-filepaths.linux-x64-musl.node"
   ],
   "description": "copy file paths to clipboard",
   "license": "MIT",
@@ -20,7 +20,7 @@
     "registry": "https://registry.npmjs.org/",
     "access": "public"
   },
-  "repository": "https://github.com/tktcorporation/electron-pan-clip",
+  "repository": "https://github.com/tktcorporation/clip-filepaths",
   "libc": [
     "musl"
   ]

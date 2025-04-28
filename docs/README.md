@@ -1,11 +1,11 @@
-# electron-pan-clip
+# clip-filepaths
 
 A cross-platform file clipboard utility for Electron applications
 
 ## Project Structure
 
 ```
-electron-pan-clip/
+clip-filepaths/
 ├── src/                # Source Code
 ├── tests/              # Tests
 ├── examples/           # Usage Examples

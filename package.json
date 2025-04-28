@@ -1,5 +1,5 @@
 {
-  "name": "electron-pan-clip",
+  "name": "clip-filepaths",
   "version": "0.0.32",
   "main": "index.js",
   "types": "index.d.ts",
@@ -18,11 +18,11 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/tktcorporation/electron-pan-clip"
+    "url": "https://github.com/tktcorporation/clip-filepaths"
   },
-  "homepage": "https://github.com/tktcorporation/electron-pan-clip#readme",
+  "homepage": "https://github.com/tktcorporation/clip-filepaths#readme",
   "bugs": {
-    "url": "https://github.com/tktcorporation/electron-pan-clip/issues"
+    "url": "https://github.com/tktcorporation/clip-filepaths/issues"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.org/",
@@ -37,7 +37,7 @@
     "index.js"
   ],
   "napi": {
-    "name": "electron-pan-clip",
+    "name": "clip-filepaths",
     "triples": {
       "defaults": true,
       "additional": [

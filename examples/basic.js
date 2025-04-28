@@ -1,4 +1,4 @@
-const { copyFiles } = require("electron-pan-clip");
+const { copyFiles } = require("clip-filepaths");
 
 // 複数のファイルをクリップボードにコピーする例
 try {

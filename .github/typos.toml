@@ -12,7 +12,7 @@ extend-ignore-re = [
 
 [default.extend-words]
 # 辞書に追加するカスタム単語
-"electron-pan-clip" = "electron-pan-clip"
+"clip-filepaths" = "clip-filepaths"
 
 [files]
 # 除外するディレクトリやファイル
