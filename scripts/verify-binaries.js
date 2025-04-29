@@ -11,6 +11,9 @@ const path = require("node:path");
 // 検証するプラットフォーム
 const platforms = [
 	"linux-x64-gnu",
+	"linux-x64-musl",
+	"linux-arm64-gnu",
+	"linux-arm64-musl",
 	"darwin-x64",
 	"darwin-arm64",
 	"win32-x64-msvc",
