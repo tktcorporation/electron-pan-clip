@@ -79,7 +79,7 @@ This project uses a development container for consistent development environment
 
 ### Cross-Compilation
 
-Cross-compilation is configured in `Cross.toml`. The project supports building for multiple platforms:
+The project supports building for multiple platforms:
 
 - Windows (x86_64, arm64)
 - macOS (x86_64, arm64)
