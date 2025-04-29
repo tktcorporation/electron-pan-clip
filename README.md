@@ -15,7 +15,7 @@ Built with [napi-rs](https://napi.rs/) and Rust, this library offers:
 
 ## Motivation
 
-When developing Electron applications, I needed a way to copy multiple photo file paths to the clipboard at once. Existing packages only supported copying single file paths, which was inefficient for tasks like photo management. This library was created to fill that gap and provide a simple solution for batch file path operations.
+When developing Electron applications, I needed a way to copy multiple photo file paths to the clipboard at once. This library was created to provide a simple solution for batch file path operations, making photo management and other tasks more efficient.
 
 ## Installation
 
