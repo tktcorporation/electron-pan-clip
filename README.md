@@ -1,6 +1,6 @@
 # clip-filepaths
 
-A cross-platform file path clipboard utility for Electron applications that supports copying multiple file paths at once.
+📋 Copy multiple file paths (including images) to clipboard - A cross platform utility.
 
 <img height="100" src="https://github.com/user-attachments/assets/836b665b-5a53-4b22-b8dc-4cc77a106999" >
 

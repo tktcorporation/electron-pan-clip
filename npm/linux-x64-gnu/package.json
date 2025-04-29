@@ -11,7 +11,20 @@
   "files": [
     "clip-filepaths.linux-x64-gnu.node"
   ],
-  "description": "copy file paths to clipboard",
+  "description": "📋 Copy multiple file paths (including images) to clipboard - A cross platform utility.",
+  "keywords": [
+    "electron",
+    "clipboard",
+    "file-path",
+    "napi-rs",
+    "rust",
+    "typescript",
+    "cross-platform",
+    "macos",
+    "windows",
+    "linux"
+  ],
+  "homepage": "https://github.com/tktcorporation/clip-filepaths#readme",
   "license": "MIT",
   "engines": {
     "node": ">= 20"
@@ -21,6 +34,9 @@
     "access": "public"
   },
   "repository": "https://github.com/tktcorporation/clip-filepaths",
+  "bugs": {
+    "url": "https://github.com/tktcorporation/clip-filepaths/issues"
+  },
   "libc": [
     "glibc"
   ]

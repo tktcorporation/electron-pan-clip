@@ -3,7 +3,7 @@
   "version": "0.1.1",
   "main": "index.js",
   "types": "index.d.ts",
-  "description": "A cross-platform file path clipboard utility for Electron applications. Built with napi-rs and Rust, offering high performance and full TypeScript support. Currently supports macOS and Windows (Linux support is planned but not yet tested).",
+  "description": "📋 Copy multiple file paths (including images) to clipboard - A cross platform utility.",
   "keywords": [
     "electron",
     "clipboard",
@@ -16,10 +16,7 @@
     "windows",
     "linux"
   ],
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/tktcorporation/clip-filepaths"
-  },
+  "repository": "https://github.com/tktcorporation/clip-filepaths",
   "homepage": "https://github.com/tktcorporation/clip-filepaths#readme",
   "bugs": {
     "url": "https://github.com/tktcorporation/clip-filepaths/issues"
