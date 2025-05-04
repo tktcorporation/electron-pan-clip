@@ -61,7 +61,8 @@ impl ClipboardOperations for RealClipboard {
 #[cfg(test)]
 pub struct MockClipboard {
   pub should_succeed: bool,
-  pub copied_files: std::cell::RefCell<Vec<String>>,
+  // モックの状態を保持するためのフィールドを追加できます
+  // pub copied_files: std::cell::RefCell<Vec<String>>,
 }
 
 #[cfg(test)]
@@ -84,46 +85,65 @@ fn copy_files_to_clipboard_with_impl(
   let pool: id = msg_send![class!(NSAutoreleasePool), new];
 
   let mut urls = Vec::new();
+  let mut errors = Vec::new(); // パス処理中のエラーを収集
 
-  for path in paths {
-    let abs_path = match Path::new(path).canonicalize() {
-      Ok(p) => p,
+  for path_str in paths {
+    let path = Path::new(path_str);
+    // canonicalize は存在しないパスや権限がない場合にエラーになる
+    match path.canonicalize() {
+      Ok(abs_path) => {
+        match abs_path.to_str() {
+          Some(s) => {
+            let ns_string: id = msg_send![class!(NSString), alloc];
+            let ns_string: id =
+              msg_send![ns_string, initWithUTF8String: s.as_ptr() as *const c_char];
+            if ns_string != nil {
+              let url_class = class!(NSURL);
+              let nsurl: id = msg_send![url_class, fileURLWithPath:ns_string];
+              if nsurl != nil {
+                urls.push(nsurl);
+              } else {
+                errors.push(format!("Failed to create NSURL for path: {}", s));
+              }
+              // release ns_string? ARC should handle it if created with alloc/init
+              // let () = msg_send![ns_string, release];
+            } else {
+              errors.push(format!("Failed to create NSString for path: {}", s));
+            }
+          }
+          None => {
+            errors.push(format!("Path contains invalid UTF-8: {:?}", abs_path));
+          }
+        }
+      }
       Err(e) => {
-        eprintln!("Failed to canonicalize path {}: {}", path, e);
-        continue;
+        // エラーを収集し、処理を続行する
+        errors.push(format!("Failed to canonicalize path '{}': {}", path_str, e));
       }
-    };
-
-    let path_str = match abs_path.to_str() {
-      Some(s) => s,
-      None => {
-        eprintln!("Path contains invalid UTF-8: {:?}", abs_path);
-        continue;
-      }
-    };
-
-    let ns_string = NSString::alloc(nil).init_str(path_str);
-    let url_class = class!(NSURL);
-    let nsurl: id = msg_send![url_class, fileURLWithPath:ns_string];
-
-    if nsurl != nil {
-      urls.push(nsurl);
-    } else {
-      eprintln!("Failed to create NSURL for path: {}", path_str);
     }
   }
 
+  // 有効な URL が一つも生成できなかった場合
   if urls.is_empty() {
     let () = msg_send![pool, drain];
-    return Err(Error::new(
-      ErrorKind::InvalidInput,
-      "No valid URIs could be created from the paths",
-    ));
+    // 詳細なエラーメッセージを含める
+    let error_message = format!(
+      "No valid URIs could be created. Errors: {}",
+      errors.join("; ")
+    );
+    return Err(Error::new(ErrorKind::InvalidInput, error_message));
+  }
+
+  // 成功しなかったパスがある場合、警告としてログ出力する（オプション）
+  if !errors.is_empty() {
+    eprintln!(
+      "Warning: Some paths failed during processing: {}",
+      errors.join("; ")
+    );
   }
 
   let result = clipboard.copy_files(urls);
   let () = msg_send![pool, drain];
-
   result
 }
 
@@ -133,93 +153,148 @@ pub fn copy_files_to_clipboard(paths: &[String]) -> Result<(), Error> {
   // AutoreleasePool を作成
   let pool: id = msg_send![class!(NSAutoreleasePool), new];
 
-  let pasteboard = NSPasteboard::generalPasteboard(nil);
+  let pasteboard: id = unsafe { NSPasteboard::generalPasteboard(nil) };
+  if pasteboard == nil {
+    let () = msg_send![pool, drain];
+    return Err(Error::new(
+      ErrorKind::Other,
+      "Failed to get general pasteboard",
+    ));
+  }
 
   // 既存のデータをクリア
-  pasteboard.clearContents();
+  let _: NSInteger = unsafe { msg_send![pasteboard, clearContents] };
 
   // ファイルの NSURL オブジェクトの配列を作成
   let mut urls = Vec::new();
+  let mut errors = Vec::new(); // エラー収集用
 
-  for path in paths {
-    // 絶対パスに変換（相対パスの場合は失敗する可能性があるため）
-    let abs_path = match Path::new(path).canonicalize() {
-      Ok(p) => p,
+  for path_str in paths {
+    let path = Path::new(path_str);
+    match path.canonicalize() {
+      Ok(abs_path) => {
+        match abs_path.to_str() {
+          Some(s) => {
+            let ns_string: id = msg_send![class!(NSString), alloc];
+            let ns_string: id =
+              msg_send![ns_string, initWithUTF8String: s.as_ptr() as *const c_char];
+            if ns_string != nil {
+              let url_class = class!(NSURL);
+              let nsurl: id = msg_send![url_class, fileURLWithPath:ns_string];
+              if nsurl != nil {
+                urls.push(nsurl);
+              } else {
+                errors.push(format!("Failed to create NSURL for path: {}", s));
+              }
+              // 必要なら release
+              // let () = msg_send![ns_string, release];
+            } else {
+              errors.push(format!("Failed to create NSString from path: {}", s));
+            }
+          }
+          None => {
+            errors.push(format!("Path contains invalid UTF-8: {:?}", abs_path));
+          }
+        }
+      }
       Err(e) => {
-        eprintln!("Failed to canonicalize path {}: {}", path, e);
-        continue;
+        errors.push(format!("Failed to canonicalize path '{}': {}", path_str, e));
       }
-    };
-
-    let path_str = match abs_path.to_str() {
-      Some(s) => s,
-      None => {
-        eprintln!("Path contains invalid UTF-8: {:?}", abs_path);
-        continue;
-      }
-    };
-
-    // NSString としてパスを作成
-    let ns_string = NSString::alloc(nil).init_str(path_str);
-
-    // NSURL を直接作成する
-    #[allow(unexpected_cfgs)]
-    let url_class = class!(NSURL);
-
-    #[allow(unexpected_cfgs)]
-    let nsurl: id = msg_send![url_class, fileURLWithPath:ns_string];
-
-    if nsurl != nil {
-      urls.push(nsurl);
-    } else {
-      eprintln!("Failed to create NSURL for path: {}", path_str);
     }
   }
 
   if urls.is_empty() {
-    // プールをドレインしてから戻る
     let () = msg_send![pool, drain];
-    return Err(Error::new(
-      ErrorKind::InvalidInput,
-      "No valid URIs could be created from the paths",
-    ));
+    let error_message = format!(
+      "No valid file URIs could be created from the provided paths. Errors: {}",
+      errors.join("; ")
+    );
+    return Err(Error::new(ErrorKind::InvalidInput, error_message));
+  }
+
+  // 警告ログ
+  if !errors.is_empty() {
+    eprintln!(
+      "Warning: Some paths could not be processed: {}",
+      errors.join("; ")
+    );
   }
 
   // NSPasteboard用のタイプを宣言
-  let file_urls_type = NSString::alloc(nil).init_str("public.file-url");
-  let files_type = NSString::alloc(nil).init_str("NSFilenamesPboardType");
+  let file_url_type_str = "public.file-url";
+  let filenames_type_str = "NSFilenamesPboardType"; // 古い形式だが互換性のため
+  let ns_file_url_type: id = msg_send![class!(NSString), alloc];
+  let ns_file_url_type: id =
+    msg_send![ns_file_url_type, initWithUTF8String: file_url_type_str.as_ptr() as *const c_char];
+  let ns_filenames_type: id = msg_send![class!(NSString), alloc];
+  let ns_filenames_type: id =
+    msg_send![ns_filenames_type, initWithUTF8String: filenames_type_str.as_ptr() as *const c_char];
 
-  // 用意するタイプの配列を作成
-  let types = vec![file_urls_type, files_type];
+  // nil チェックを追加
+  if ns_file_url_type == nil || ns_filenames_type == nil {
+    let () = msg_send![pool, drain];
+    // release 필요?
+    return Err(Error::new(
+      ErrorKind::Other,
+      "Failed to create NSString for pasteboard types",
+    ));
+  }
+
+  let types = vec![ns_file_url_type, ns_filenames_type];
   let types_array: id = msg_send![
     class!(NSArray),
     arrayWithObjects:types.as_ptr()
     count:types.len() as NSUInteger
   ];
+  if types_array == nil {
+    let () = msg_send![pool, drain];
+    // release 필요?
+    return Err(Error::new(
+      ErrorKind::Other,
+      "Failed to create NSArray for pasteboard types",
+    ));
+  }
 
   // クリップボードに対してタイプを宣言
-  let _: () = msg_send![pasteboard, declareTypes:types_array owner:nil];
+  let declared: bool = msg_send![pasteboard, declareTypes:types_array owner:nil];
+  if !declared {
+    let () = msg_send![pool, drain];
+    // release 필요?
+    return Err(Error::new(
+      ErrorKind::Other,
+      "Failed to declare pasteboard types",
+    ));
+  }
 
-  // NSArray にURLを追加（正しい方法で配列を生成）
+  // NSArray にURLを追加
   let urls_array: id = msg_send![
     class!(NSArray),
     arrayWithObjects:urls.as_ptr()
     count:urls.len() as NSUInteger
   ];
+  if urls_array == nil {
+    let () = msg_send![pool, drain];
+    // release 필요?
+    return Err(Error::new(
+      ErrorKind::Other,
+      "Failed to create NSArray for URLs",
+    ));
+  }
 
   // クリップボードにファイルURLの配列を書き込み
-  let success: i8 = msg_send![pasteboard, writeObjects:urls_array];
+  let success: bool = msg_send![pasteboard, writeObjects:urls_array];
 
   // AutoreleasePool をドレイン
   let () = msg_send![pool, drain];
+  // 必要なら type string なども release
 
-  if success != 0 {
-    println!("Copied files to clipboard on macOS: {:?}", paths);
+  if success {
+    println!("Copied {} files to clipboard on macOS", urls.len());
     Ok(())
   } else {
     Err(Error::new(
       ErrorKind::Other,
-      "Failed to write file URLs to pasteboard",
+      "Failed to write file URLs to pasteboard (writeObjects failed)",
     ))
   }
 }
@@ -227,26 +302,62 @@ pub fn copy_files_to_clipboard(paths: &[String]) -> Result<(), Error> {
 // クリップボードからテキストを読み取る
 pub fn read_clipboard_text() -> Result<String, Error> {
   let pool: id = msg_send![class!(NSAutoreleasePool), new];
+  let pasteboard: id = unsafe { NSPasteboard::generalPasteboard(nil) };
+  if pasteboard == nil {
+    let () = msg_send![pool, drain];
+    return Err(Error::new(
+      ErrorKind::Other,
+      "Failed to get general pasteboard",
+    ));
+  }
 
-  let pasteboard = NSPasteboard::generalPasteboard(nil);
+  // テキスト形式の定義 (public.utf8-plain-text)
+  let type_str = "public.utf8-plain-text";
+  let string_type: id = msg_send![class!(NSString), alloc];
+  let string_type: id =
+    msg_send![string_type, initWithUTF8String: type_str.as_ptr() as *const c_char];
+  if string_type == nil {
+    let () = msg_send![pool, drain];
+    return Err(Error::new(
+      ErrorKind::Other,
+      "Failed to create NSString for text type",
+    ));
+  }
 
-  // テキスト形式の定義
-  let string_type = NSString::alloc(nil).init_str("public.utf8-plain-text");
-
-  // テキストデータを取得
+  // テキストデータを取得 (stringForType:)
   let pasteboard_string: id = msg_send![pasteboard, stringForType:string_type];
 
   let result = if pasteboard_string != nil {
     // NSStringをRustの文字列に変換
-    let chars: *const c_char = msg_send![pasteboard_string, UTF8String];
-    let rust_str = std::ffi::CStr::from_ptr(chars)
-      .to_string_lossy()
-      .to_string();
-    Ok(rust_str)
+    let utf8_str: *const c_char = msg_send![pasteboard_string, UTF8String];
+    if !utf8_str.is_null() {
+      // CStr::from_ptr は unsafe ブロックが必要
+      unsafe {
+        let rust_str = std::ffi::CStr::from_ptr(utf8_str)
+          .to_string_lossy()
+          .to_string();
+        if rust_str.is_empty() {
+          // 空文字列の場合も成功とするか、エラーとするか？ 仕様による。
+          // ここでは空文字列も成功として返す。
+          Ok(rust_str)
+        } else {
+          Ok(rust_str)
+        }
+      }
+    } else {
+      Err(Error::new(
+        ErrorKind::InvalidData,
+        "Failed to get UTF8 string from pasteboard content",
+      ))
+    }
   } else {
-    Err(Error::new(ErrorKind::Other, "No text found on clipboard"))
+    Err(Error::new(
+      ErrorKind::NotFound,
+      "No text content found on clipboard for type public.utf8-plain-text",
+    ))
   };
 
+  // let () = msg_send![string_type, release]; // ARC
   let () = msg_send![pool, drain];
   result
 }
@@ -254,31 +365,61 @@ pub fn read_clipboard_text() -> Result<String, Error> {
 // クリップボードからRAWデータを読み取る
 pub fn read_clipboard_raw() -> Result<Vec<u8>, Error> {
   let pool: id = msg_send![class!(NSAutoreleasePool), new];
+  let pasteboard: id = unsafe { NSPasteboard::generalPasteboard(nil) };
+  if pasteboard == nil {
+    let () = msg_send![pool, drain];
+    return Err(Error::new(
+      ErrorKind::Other,
+      "Failed to get general pasteboard",
+    ));
+  }
 
-  let pasteboard = NSPasteboard::generalPasteboard(nil);
+  // 利用可能な最初のタイプを取得してみる (より汎用的)
+  let available_types: id = msg_send![pasteboard, types];
+  if available_types == nil || msg_send![available_types, count] == 0 {
+    let () = msg_send![pool, drain];
+    return Err(Error::new(
+      ErrorKind::NotFound,
+      "Clipboard is empty or has no available types",
+    ));
+  }
 
-  // 一般的なバイナリデータ形式の定義
-  let data_type = NSString::alloc(nil).init_str("public.data");
+  // 最初のタイプでデータを取得試行
+  let data_type: id = msg_send![available_types, objectAtIndex:0];
+  if data_type == nil {
+    let () = msg_send![pool, drain];
+    return Err(Error::new(
+      ErrorKind::Other,
+      "Failed to get first available type from clipboard",
+    ));
+  }
 
-  // データを取得
+  // dataForType: を使用
   let data: id = msg_send![pasteboard, dataForType:data_type];
 
   let result = if data != nil {
     // NSDataをRustのVec<u8>に変換
     let length: NSUInteger = msg_send![data, length];
-    let bytes: *const u8 = msg_send![data, bytes];
+    let bytes: *const u8 = msg_send![data, bytes]; // bytes メソッドは unsafe
 
     if length > 0 && !bytes.is_null() {
-      let slice = std::slice::from_raw_parts(bytes, length as usize);
-      let vec_data = slice.to_vec();
-      Ok(vec_data)
+      unsafe {
+        let slice = std::slice::from_raw_parts(bytes, length as usize);
+        let vec_data = slice.to_vec();
+        Ok(vec_data)
+      }
     } else {
-      Err(Error::new(ErrorKind::Other, "Empty data on clipboard"))
+      // データはあるが空の場合
+      Ok(Vec::new()) // 空のVecを返す
     }
   } else {
+    // dataForType: が nil を返した場合
+    // 取得しようとした type をエラーメッセージに含めるとより親切
+    let type_str: *const c_char = msg_send![data_type, UTF8String];
+    let type_name = unsafe { std::ffi::CStr::from_ptr(type_str).to_string_lossy() };
     Err(Error::new(
-      ErrorKind::Other,
-      "No raw data found on clipboard",
+      ErrorKind::NotFound,
+      format!("No data found on clipboard for type '{}'", type_name),
     ))
   };
 
@@ -289,17 +430,27 @@ pub fn read_clipboard_raw() -> Result<Vec<u8>, Error> {
 // クリップボードからファイルパスを読み取る
 pub fn read_clipboard_file_paths() -> Result<Vec<String>, Error> {
   let pool: id = msg_send![class!(NSAutoreleasePool), new];
+  let pasteboard: id = unsafe { NSPasteboard::generalPasteboard(nil) };
+  if pasteboard == nil {
+    let () = msg_send![pool, drain];
+    return Err(Error::new(
+      ErrorKind::Other,
+      "Failed to get general pasteboard",
+    ));
+  }
 
-  let pasteboard = NSPasteboard::generalPasteboard(nil);
+  // ファイルURLの型 (NSURL) を含む NSArray をクラスフィルターとして指定
+  let url_class: id = class!(NSURL);
+  let classes_array: id = msg_send![class!(NSArray), arrayWithObject:url_class];
+  if classes_array == nil {
+    let () = msg_send![pool, drain];
+    return Err(Error::new(
+      ErrorKind::Other,
+      "Failed to create NSArray for NSURL class filter",
+    ));
+  }
 
-  // ファイルURLの型を定義
-  let url_class = class!(NSURL);
-  let classes_array: id = msg_send![
-    class!(NSArray),
-    arrayWithObject:url_class
-  ];
-
-  // クリップボードからファイルURLを読み取る
+  // クリップボードから NSURL オブジェクトを読み取る (readObjectsForClasses:options:)
   let file_urls: id = msg_send![pasteboard, readObjectsForClasses:classes_array options:nil];
 
   let mut paths = Vec::new();
@@ -311,16 +462,31 @@ pub fn read_clipboard_file_paths() -> Result<Vec<String>, Error> {
     for i in 0..count {
       let url: id = msg_send![file_urls, objectAtIndex:i];
       if url != nil {
-        // URLをパスに変換
+        // URLがファイルURLか確認 (isFileURL)
         let is_file_url: bool = msg_send![url, isFileURL];
         if is_file_url {
-          let path: id = msg_send![url, path];
-          if path != nil {
-            let chars: *const c_char = msg_send![path, UTF8String];
-            let path_str = std::ffi::CStr::from_ptr(chars)
-              .to_string_lossy()
-              .to_string();
-            paths.push(path_str);
+          // URLからパスを取得 (path)
+          let path_nsstring: id = msg_send![url, path];
+          if path_nsstring != nil {
+            let utf8_path: *const c_char = msg_send![path_nsstring, UTF8String];
+            if !utf8_path.is_null() {
+              unsafe {
+                let path_str = std::ffi::CStr::from_ptr(utf8_path)
+                  .to_string_lossy()
+                  .to_string();
+                paths.push(path_str);
+              }
+            } else {
+              eprintln!(
+                "Warning: Could not get UTF8 string from file URL path object at index {}",
+                i
+              );
+            }
+          } else {
+            eprintln!(
+              "Warning: Could not get path object from file URL at index {}",
+              i
+            );
           }
         }
       }
@@ -330,9 +496,10 @@ pub fn read_clipboard_file_paths() -> Result<Vec<String>, Error> {
   let () = msg_send![pool, drain];
 
   if paths.is_empty() {
+    // 読み取りは成功したが、ファイルURLが含まれていなかった場合
     Err(Error::new(
-      ErrorKind::Other,
-      "No file paths found on clipboard",
+      ErrorKind::NotFound,
+      "No valid file paths found on clipboard (checked for NSURL)",
     ))
   } else {
     Ok(paths)
@@ -374,21 +541,27 @@ mod tests {
     let pool: id = msg_send![class!(NSAutoreleasePool), new];
 
     let test_path = "/tmp/test_path.txt";
-    let ns_string = NSString::alloc(nil).init_str(test_path);
+    let ns_string: id = msg_send![class!(NSString), alloc];
+    let ns_string: id =
+      msg_send![ns_string, initWithUTF8String: test_path.as_ptr() as *const c_char];
+    assert!(ns_string != nil, "NSString should not be nil");
 
     let url_class = class!(NSURL);
     let nsurl: id = msg_send![url_class, fileURLWithPath:ns_string];
-
     assert!(nsurl != nil, "NSURL should not be nil");
 
     // URLからパスを取得
-    let path: id = msg_send![nsurl, path];
-    assert!(path != nil, "Path should not be nil");
+    let path_nsstring: id = msg_send![nsurl, path];
+    assert!(path_nsstring != nil, "Path NSString should not be nil");
 
-    let chars: *const c_char = msg_send![path, UTF8String];
-    let result_path = std::ffi::CStr::from_ptr(chars)
-      .to_string_lossy()
-      .to_string();
+    let utf8_path: *const c_char = msg_send![path_nsstring, UTF8String];
+    assert!(!utf8_path.is_null(), "UTF8 path pointer should not be null");
+
+    let result_path = unsafe {
+      std::ffi::CStr::from_ptr(utf8_path)
+        .to_string_lossy()
+        .to_string()
+    };
 
     assert_eq!(
       result_path, test_path,
