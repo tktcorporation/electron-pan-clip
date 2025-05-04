@@ -121,7 +121,8 @@ describe("clip-filepaths", () => {
 	});
 
 	it("should handle empty array", () => {
-		expect(() => writeClipboardFilePaths([])).toThrow();
+		// 空の配列の場合はエラーなく実行されるはず
+		expect(() => writeClipboardFilePaths([])).not.toThrow();
 	});
 
 	// OSごとのテスト（条件付きテスト）- CI環境ではスキップ

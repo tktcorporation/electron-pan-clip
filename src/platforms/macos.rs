@@ -126,9 +126,8 @@ fn copy_files_to_clipboard_with_impl(
   // 有効な URL が一つも生成できなかった場合
   if urls.is_empty() {
     let () = msg_send![pool, drain];
-    // 詳細なエラーメッセージを含める
     let error_message = format!(
-      "No valid URIs could be created. Errors: {}",
+      "No valid URIs could be created from the paths. Errors: {}",
       errors.join("; ")
     );
     return Err(Error::new(ErrorKind::InvalidInput, error_message));
@@ -206,7 +205,7 @@ pub fn copy_files_to_clipboard(paths: &[String]) -> Result<(), Error> {
   if urls.is_empty() {
     let () = msg_send![pool, drain];
     let error_message = format!(
-      "No valid file URIs could be created from the provided paths. Errors: {}",
+      "No valid URIs could be created from the paths. Errors: {}",
       errors.join("; ")
     );
     return Err(Error::new(ErrorKind::InvalidInput, error_message));

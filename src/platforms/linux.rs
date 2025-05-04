@@ -8,22 +8,36 @@ use std::process::Command;
 pub fn copy_files_to_clipboard(paths: &[String]) -> Result<(), Error> {
   // ファイルパスをURIに変換
   let mut uri_paths = Vec::new();
+  let mut errors = Vec::new();
 
   for path in paths {
     // 絶対パスに変換
-    let abs_path = match Path::new(path).canonicalize() {
-      Ok(p) => p,
-      Err(e) => {
-        return Err(Error::new(
-          ErrorKind::InvalidInput,
-          format!("Failed to canonicalize path {}: {}", path, e),
-        ));
+    match Path::new(path).canonicalize() {
+      Ok(abs_path) => {
+        // file:// URIを作成
+        let uri = format!("file://{}", abs_path.display());
+        uri_paths.push(uri);
       }
-    };
+      Err(e) => {
+        errors.push(format!("Failed to canonicalize path {}: {}", path, e));
+      }
+    }
+  }
 
-    // file:// URIを作成
-    let uri = format!("file://{}", abs_path.display());
-    uri_paths.push(uri);
+  // 有効なURIが一つも生成できなかった場合
+  if uri_paths.is_empty() {
+    return Err(Error::new(
+      ErrorKind::InvalidInput,
+      format!(
+        "No valid URIs could be created from the paths. Errors: {}",
+        errors.join("; ")
+      ),
+    ));
+  }
+
+  // 一部の失敗があった場合は警告を出す
+  if !errors.is_empty() {
+    eprintln!("Warning: Some paths failed: {}", errors.join("; "));
   }
 
   // URIをタブ区切りでつなげる（GNOMEの標準フォーマット）

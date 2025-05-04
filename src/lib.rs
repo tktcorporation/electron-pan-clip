@@ -83,8 +83,9 @@ pub fn hello_world() -> String {
 /// * Please be careful when running tests.
 #[napi]
 pub fn write_clipboard_file_paths(paths: Vec<String>) -> NapiResult<()> {
+  // 空の配列の場合は早期リターンするが、エラーではなく成功として扱う
   if paths.is_empty() {
-    return Err(NapiError::from_reason("No file paths provided"));
+    return Ok(());
   }
 
   #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
@@ -221,10 +222,7 @@ mod tests {
   #[test]
   fn test_write_clipboard_file_paths_empty_input() {
     let result = write_clipboard_file_paths(vec![]);
-    assert!(result.is_err());
-    if let Err(err) = result {
-      assert!(err.reason.contains("No file paths provided"));
-    }
+    assert!(result.is_ok());
   }
 
   // 実際のファイルを作成してコピーするテスト
