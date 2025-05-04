@@ -1,7 +1,7 @@
 #![cfg(target_os = "macos")]
 
 use cocoa::base::{id, nil};
-use objc::{class, msg_send};
+use objc::{class, msg_send, sel, sel_impl};
 use std::io::{Error, ErrorKind};
 use std::path::Path;
 

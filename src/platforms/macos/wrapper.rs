@@ -2,11 +2,10 @@
 
 use cocoa::appkit::NSPasteboard;
 use cocoa::base::{id, nil};
-use cocoa::foundation::{NSArray, NSInteger, NSString, NSUInteger};
+use cocoa::foundation::NSUInteger;
 use objc::{class, msg_send, sel, sel_impl};
 use std::ffi::c_char;
 use std::io::{Error, ErrorKind};
-use std::path::PathBuf;
 
 // ------------------------------------
 // 安全なラッパー実装
@@ -33,6 +32,7 @@ impl AutoreleasePool {
   }
 
   /// 内部poolをidとして取得
+  #[allow(dead_code)]
   pub fn as_id(&self) -> id {
     self.pool
   }
@@ -40,7 +40,9 @@ impl AutoreleasePool {
 
 impl Drop for AutoreleasePool {
   fn drop(&mut self) {
-    unsafe { msg_send![self.pool, drain] };
+    unsafe {
+      let _: () = msg_send![self.pool, drain];
+    }
   }
 }
 
@@ -283,6 +285,7 @@ impl Pasteboard {
   }
 
   /// NSPasteboardオブジェクトをidとして取得
+  #[allow(dead_code)]
   pub fn as_id(&self) -> id {
     self.pasteboard
   }
@@ -320,6 +323,7 @@ impl ObjcData {
   }
 
   /// NSDataオブジェクトをidとして取得
+  #[allow(dead_code)]
   pub fn as_id(&self) -> id {
     self.data
   }
