@@ -1,34 +1,36 @@
 #![cfg(target_os = "windows")]
 
+use std::ffi::c_void;
 use std::ffi::OsStr;
 use std::ffi::OsString;
 use std::io::{Error, ErrorKind};
 use std::iter::once;
-use std::mem::{size_of, zeroed};
 use std::os::windows::ffi::OsStrExt;
 use std::os::windows::ffi::OsStringExt;
 use std::path::Path;
 use std::ptr;
-use windows::core::{HSTRING, PCWSTR, PWSTR};
-use windows::Win32::Foundation::{CloseHandle, GetLastError, HANDLE, HWND, POINT};
-use windows::Win32::Storage::FileSystem::{DragQueryFileW, HDROP};
-use windows::Win32::System::DataExchange::CF_HDROP;
-use windows::Win32::System::DataExchange::CF_UNICODETEXT;
-use windows::Win32::System::DataExchange::{
-  CloseClipboard, EmptyClipboard, GetClipboardData, IsClipboardFormatAvailable, OpenClipboard,
-  RegisterClipboardFormatW, SetClipboardData,
-};
-use windows::Win32::System::Memory::{
-  GlobalAlloc, GlobalFree, GlobalLock, GlobalUnlock, GMEM_MOVEABLE,
-};
 
-// Windows用のDROPFILES構造体定義
+use windows_sys::Win32::Foundation::{GetLastError, POINT};
+use windows_sys::Win32::System::DataExchange::{
+  CloseClipboard, EmptyClipboard, GetClipboardData, IsClipboardFormatAvailable, OpenClipboard,
+  SetClipboardData,
+};
+use windows_sys::Win32::System::Memory::{
+  GlobalAlloc, GlobalLock, GlobalSize, GlobalUnlock, GMEM_MOVEABLE,
+};
+use windows_sys::Win32::UI::Shell::DragQueryFileW;
+
+// シェルフォーマットの定数
+const CF_HDROP: u32 = 15;
+
+// Shell.h から DROPFILES 構造体を定義
 #[repr(C)]
+#[allow(non_snake_case)]
 struct DROPFILES {
-  pFiles: u32,                             // ファイル名へのオフセット
-  pt: POINT,                               // ドロップポイント
-  fNC: windows::Win32::Foundation::BOOL,   // クライアント領域外かどうか
-  fWide: windows::Win32::Foundation::BOOL, // Unicodeかどうか
+  pFiles: u32,
+  pt: windows_sys::Win32::Foundation::POINT,
+  fNC: windows_sys::Win32::Foundation::BOOL,
+  fWide: windows_sys::Win32::Foundation::BOOL,
 }
 
 // ワイド文字列（UTF-16）に変換し、NULL終端を追加するヘルパー関数
@@ -36,21 +38,27 @@ fn to_wide_null(s: &str) -> Vec<u16> {
   OsStr::new(s).encode_wide().chain(once(0)).collect()
 }
 
+// HGLOBAL用のGlobalFree関数（Kernel32.dllから直接インポート）
+#[link(name = "kernel32")]
+extern "system" {
+  fn GlobalFree(hMem: *mut c_void) -> *mut c_void;
+}
+
 pub fn copy_files_to_clipboard(paths: &[String]) -> Result<(), Error> {
   // クリップボードを開く
-  if OpenClipboard(HWND(0)) == false {
+  if unsafe { OpenClipboard(0) } == 0 {
     return Err(Error::new(
       ErrorKind::Other,
-      format!("Failed to open clipboard: {:?}", GetLastError()),
+      format!("Failed to open clipboard: {:?}", unsafe { GetLastError() }),
     ));
   }
 
   // クリップボードをクリア
-  if EmptyClipboard() == false {
-    CloseClipboard();
+  if unsafe { EmptyClipboard() } == 0 {
+    unsafe { CloseClipboard() };
     return Err(Error::new(
       ErrorKind::Other,
-      format!("Failed to empty clipboard: {:?}", GetLastError()),
+      format!("Failed to empty clipboard: {:?}", unsafe { GetLastError() }),
     ));
   }
 
@@ -64,7 +72,7 @@ pub fn copy_files_to_clipboard(paths: &[String]) -> Result<(), Error> {
     let abs_path = match Path::new(path).canonicalize() {
       Ok(p) => p,
       Err(e) => {
-        CloseClipboard();
+        unsafe { CloseClipboard() };
         return Err(Error::new(
           ErrorKind::InvalidInput,
           format!("Failed to canonicalize path {}: {}", path, e),
@@ -76,7 +84,7 @@ pub fn copy_files_to_clipboard(paths: &[String]) -> Result<(), Error> {
     let wide_path = match abs_path.to_str() {
       Some(s) => OsString::from(s),
       None => {
-        CloseClipboard();
+        unsafe { CloseClipboard() };
         return Err(Error::new(
           ErrorKind::InvalidInput,
           format!("Path contains invalid characters: {:?}", abs_path),
@@ -90,58 +98,64 @@ pub fn copy_files_to_clipboard(paths: &[String]) -> Result<(), Error> {
   }
 
   // メモリを確保
-  let hmem = GlobalAlloc(GMEM_MOVEABLE, total_size);
-  if hmem.is_invalid() {
-    CloseClipboard();
+  let hmem = unsafe { GlobalAlloc(GMEM_MOVEABLE, total_size) };
+  if hmem == ptr::null_mut() {
+    unsafe { CloseClipboard() };
     return Err(Error::new(
       ErrorKind::Other,
-      format!("Failed to allocate memory: {:?}", GetLastError()),
+      format!("Failed to allocate memory: {:?}", unsafe { GetLastError() }),
     ));
   }
 
   // メモリをロック
-  let ptr = GlobalLock(hmem);
+  let ptr = unsafe { GlobalLock(hmem as *mut c_void) };
   if ptr.is_null() {
-    GlobalFree(hmem);
-    CloseClipboard();
+    unsafe { GlobalFree(hmem as *mut c_void) };
+    unsafe { CloseClipboard() };
     return Err(Error::new(
       ErrorKind::Other,
-      format!("Failed to lock memory: {:?}", GetLastError()),
+      format!("Failed to lock memory: {:?}", unsafe { GetLastError() }),
     ));
   }
 
   // DROPFILES構造体を初期化
   let drop_files = ptr as *mut DROPFILES;
-  (*drop_files).pFiles = std::mem::size_of::<DROPFILES>() as u32;
-  (*drop_files).pt = POINT { x: 0, y: 0 };
-  (*drop_files).fNC = false.into();
-  (*drop_files).fWide = true.into(); // Unicode (wide char)を使用
+  unsafe {
+    (*drop_files).pFiles = std::mem::size_of::<DROPFILES>() as u32;
+    (*drop_files).pt = POINT { x: 0, y: 0 };
+    (*drop_files).fNC = 0; // false
+    (*drop_files).fWide = 1; // true (Unicode wide char)
+  }
 
   // パスをコピー
   let mut dest = (ptr as usize + std::mem::size_of::<DROPFILES>()) as *mut u16;
   for path in wide_paths {
-    std::ptr::copy_nonoverlapping(path.as_ptr(), dest, path.len());
-    dest = dest.add(path.len());
+    unsafe {
+      std::ptr::copy_nonoverlapping(path.as_ptr(), dest, path.len());
+      dest = dest.add(path.len());
+    }
   }
   // 最後にダブルヌル終端を追加
-  *dest = 0;
+  unsafe { *dest = 0 };
 
   // メモリをアンロック
-  GlobalUnlock(hmem);
+  unsafe { GlobalUnlock(hmem as *mut c_void) };
 
   // クリップボードにデータをセット
-  let result = SetClipboardData(CF_HDROP.0 as u32, hmem);
-  if result.is_invalid() {
-    GlobalFree(hmem);
-    CloseClipboard();
+  let result = unsafe { SetClipboardData(CF_HDROP as u32, hmem as isize) };
+  if result == 0 {
+    unsafe { GlobalFree(hmem as *mut c_void) };
+    unsafe { CloseClipboard() };
     return Err(Error::new(
       ErrorKind::Other,
-      format!("Failed to set clipboard data: {:?}", GetLastError()),
+      format!("Failed to set clipboard data: {:?}", unsafe {
+        GetLastError()
+      }),
     ));
   }
 
   // クリップボードを閉じる
-  CloseClipboard();
+  unsafe { CloseClipboard() };
 
   Ok(())
 }
@@ -150,7 +164,7 @@ pub fn copy_files_to_clipboard(paths: &[String]) -> Result<(), Error> {
 pub fn read_clipboard_text() -> Result<String, Error> {
   unsafe {
     // クリップボードを開く
-    if OpenClipboard(HWND(0)) == false {
+    if OpenClipboard(0) == 0 {
       return Err(Error::new(
         ErrorKind::Other,
         format!("Failed to open clipboard: {:?}", GetLastError()),
@@ -158,7 +172,8 @@ pub fn read_clipboard_text() -> Result<String, Error> {
     }
 
     // CF_UNICODETEXTフォーマットが利用可能か確認
-    if IsClipboardFormatAvailable(CF_UNICODETEXT.0 as u32) == false {
+    if IsClipboardFormatAvailable(13) == 0 {
+      // CF_UNICODETEXT = 13
       CloseClipboard();
       return Err(Error::new(
         ErrorKind::Other,
@@ -167,8 +182,8 @@ pub fn read_clipboard_text() -> Result<String, Error> {
     }
 
     // クリップボードからデータを取得
-    let handle = GetClipboardData(CF_UNICODETEXT.0 as u32);
-    if handle.is_invalid() {
+    let handle = GetClipboardData(13); // CF_UNICODETEXT = 13
+    if handle == 0 {
       CloseClipboard();
       return Err(Error::new(
         ErrorKind::Other,
@@ -177,7 +192,7 @@ pub fn read_clipboard_text() -> Result<String, Error> {
     }
 
     // メモリをロック
-    let ptr = GlobalLock(handle) as *const u16;
+    let ptr = GlobalLock(handle as *mut c_void) as *const u16;
     if ptr.is_null() {
       CloseClipboard();
       return Err(Error::new(
@@ -197,7 +212,7 @@ pub fn read_clipboard_text() -> Result<String, Error> {
     let text = String::from_utf16_lossy(wstr);
 
     // メモリをアンロック
-    GlobalUnlock(handle);
+    GlobalUnlock(handle as *mut c_void);
 
     // クリップボードを閉じる
     CloseClipboard();
@@ -210,7 +225,7 @@ pub fn read_clipboard_text() -> Result<String, Error> {
 pub fn read_clipboard_raw() -> Result<Vec<u8>, Error> {
   unsafe {
     // クリップボードを開く
-    if OpenClipboard(HWND(0)) == false {
+    if OpenClipboard(0) == 0 {
       return Err(Error::new(
         ErrorKind::Other,
         format!("Failed to open clipboard: {:?}", GetLastError()),
@@ -218,11 +233,11 @@ pub fn read_clipboard_raw() -> Result<Vec<u8>, Error> {
     }
 
     // 利用可能なフォーマットを調べる - 最初の利用可能なフォーマットを使用
-    let format_id = CF_UNICODETEXT.0 as u32; // テキストをデフォルトとして使用
+    let format_id = 13; // CF_UNICODETEXT = 13
 
     // クリップボードからデータを取得
     let handle = GetClipboardData(format_id);
-    if handle.is_invalid() {
+    if handle == 0 {
       CloseClipboard();
       return Err(Error::new(
         ErrorKind::Other,
@@ -231,7 +246,7 @@ pub fn read_clipboard_raw() -> Result<Vec<u8>, Error> {
     }
 
     // メモリをロック
-    let ptr = GlobalLock(handle);
+    let ptr = GlobalLock(handle as *mut c_void);
     if ptr.is_null() {
       CloseClipboard();
       return Err(Error::new(
@@ -241,7 +256,7 @@ pub fn read_clipboard_raw() -> Result<Vec<u8>, Error> {
     }
 
     // グローバルメモリのサイズを取得
-    let size = windows::Win32::System::Memory::GlobalSize(handle);
+    let size = GlobalSize(handle as *mut c_void);
 
     // バイトデータをコピー
     let data = if size > 0 {
@@ -252,7 +267,7 @@ pub fn read_clipboard_raw() -> Result<Vec<u8>, Error> {
     };
 
     // メモリをアンロック
-    GlobalUnlock(handle);
+    GlobalUnlock(handle as *mut c_void);
 
     // クリップボードを閉じる
     CloseClipboard();
@@ -270,69 +285,68 @@ pub fn read_clipboard_raw() -> Result<Vec<u8>, Error> {
 
 // クリップボードからファイルパスを読み取る
 pub fn read_clipboard_file_paths() -> Result<Vec<String>, Error> {
-  // クリップボードを開く
-  if OpenClipboard(HWND(0)) == false {
-    return Err(Error::new(
-      ErrorKind::Other,
-      format!("Failed to open clipboard: {:?}", GetLastError()),
-    ));
-  }
-
-  // CF_HDROPフォーマットが利用可能か確認
-  if IsClipboardFormatAvailable(CF_HDROP.0 as u32) == false {
-    CloseClipboard();
-    return Err(Error::new(
-      ErrorKind::Other,
-      "No file paths available in clipboard",
-    ));
-  }
-
-  // クリップボードからデータを取得
-  let hdrop = GetClipboardData(CF_HDROP.0 as u32);
-  if hdrop.is_invalid() {
-    CloseClipboard();
-    return Err(Error::new(
-      ErrorKind::Other,
-      format!("Failed to get clipboard data: {:?}", GetLastError()),
-    ));
-  }
-
-  // ファイル数を取得
-  let file_count = DragQueryFileW(HDROP(hdrop.0), 0xFFFFFFFF, None);
-
-  let mut paths = Vec::new();
-
-  // 各ファイルパスを取得
-  for i in 0..file_count {
-    // 必要なバッファサイズを取得
-    let size = DragQueryFileW(HDROP(hdrop.0), i, None) + 1;
-
-    // バッファを確保
-    let mut buffer = vec![0u16; size as usize];
-
-    // ファイル名を取得
-    let length = DragQueryFileW(HDROP(hdrop.0), i, Some(&mut buffer));
-
-    if length > 0 {
-      // 実際の長さに合わせてバッファをトリミング
-      buffer.truncate(length as usize);
-
-      // UTF-16文字列をRust文字列に変換
-      let path = String::from_utf16_lossy(&buffer);
-      paths.push(path);
+  unsafe {
+    // クリップボードを開く
+    if OpenClipboard(0) == 0 {
+      return Err(Error::new(
+        ErrorKind::Other,
+        format!("Failed to open clipboard: {:?}", GetLastError()),
+      ));
     }
-  }
 
-  // クリップボードを閉じる
-  CloseClipboard();
+    // CF_HDROPフォーマットが利用可能か確認
+    if IsClipboardFormatAvailable(CF_HDROP) == 0 {
+      CloseClipboard();
+      return Err(Error::new(
+        ErrorKind::Other,
+        "No file paths available in clipboard",
+      ));
+    }
 
-  if paths.is_empty() {
-    Err(Error::new(
-      ErrorKind::Other,
-      "No valid file paths found in clipboard",
-    ))
-  } else {
-    Ok(paths)
+    // クリップボードからデータを取得
+    let hdrop = GetClipboardData(CF_HDROP);
+    if hdrop == 0 {
+      CloseClipboard();
+      return Err(Error::new(ErrorKind::Other, "Failed to get clipboard data"));
+    }
+
+    // ファイル数を取得 (0xFFFFFFFFを指定すると、ファイル数が返る)
+    let file_count = DragQueryFileW(hdrop as isize, 0xFFFFFFFF, ptr::null_mut(), 0);
+
+    let mut paths = Vec::new();
+
+    // 各ファイルパスを取得
+    for i in 0..file_count {
+      // 必要なバッファサイズを取得
+      let size = DragQueryFileW(hdrop as isize, i, ptr::null_mut(), 0) + 1;
+
+      // バッファを確保
+      let mut buffer = vec![0u16; size as usize];
+
+      // ファイル名を取得
+      let length = DragQueryFileW(hdrop as isize, i, buffer.as_mut_ptr(), size);
+
+      if length > 0 {
+        // 実際の長さに合わせてバッファをトリミング
+        buffer.truncate(length as usize);
+
+        // UTF-16文字列をRust文字列に変換
+        let path = String::from_utf16_lossy(&buffer);
+        paths.push(path);
+      }
+    }
+
+    // クリップボードを閉じる
+    CloseClipboard();
+
+    if paths.is_empty() {
+      Err(Error::new(
+        ErrorKind::Other,
+        "No valid file paths found in clipboard",
+      ))
+    } else {
+      Ok(paths)
+    }
   }
 }
 
