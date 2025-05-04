@@ -13,6 +13,19 @@ export interface ClipboardContent {
   /** テキスト内容。読み取りに失敗した場合はnull。 */
   text?: string
 }
+/** クリップボードのバイナリデータを読みやすい形式で表示するための構造体 */
+export interface ReadableClipboardContent {
+  /** バイナリデータをHEX形式で表示 */
+  hexView?: string
+  /** バイナリデータをUTF-8テキストとして解釈（可能な場合） */
+  textView?: string
+  /** バイナリデータのMIMEタイプ（判別可能な場合） */
+  mimeType?: string
+  /** データのサイズ（バイト単位） */
+  size: number
+  /** 最初の数バイトのプレビュー */
+  preview?: string
+}
 /** Hello World関数 - 動作確認用 */
 export declare function helloWorld(): string
 /**
@@ -57,3 +70,5 @@ export declare function readClipboardRaw(): NapiResult
  * * Only returns an error if both file paths and text reads fail.
  */
 export declare function readClipboardResults(): ClipboardContent
+/** クリップボードのバイナリデータを読みやすい形式で取得 */
+export declare function readClipboardReadable(): ReadableClipboardContent

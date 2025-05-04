@@ -4,6 +4,11 @@
 extern crate napi_derive;
 
 // OS別の実装モジュール
+#[cfg(target_os = "macos")]
+#[allow(unexpected_cfgs)]
+mod platforms;
+
+#[cfg(not(target_os = "macos"))]
 mod platforms;
 
 #[cfg(target_os = "windows")]
@@ -46,13 +51,35 @@ pub struct ClipboardReadResult {
   pub text: NapiResult<Option<String>>,
 }
 
+/// クリップボードのバイナリデータを読みやすい形式で表示するための構造体
+#[napi(object)]
+pub struct ReadableClipboardContent {
+  /// バイナリデータをHEX形式で表示
+  pub hex_view: Option<String>,
+  /// バイナリデータをUTF-8テキストとして解釈（可能な場合）
+  pub text_view: Option<String>,
+  /// バイナリデータのMIMEタイプ（判別可能な場合）
+  pub mime_type: Option<String>,
+  /// データのサイズ（バイト単位）
+  pub size: u32,
+  /// 最初の数バイトのプレビュー
+  pub preview: Option<String>,
+}
+
 /// Hello World関数 - 動作確認用
 #[napi]
 pub fn hello_world() -> String {
+  let os_name = match std::env::consts::OS {
+    "macos" => "macOS",
+    "windows" => "Windows",
+    "linux" => "Linux",
+    other => other,
+  };
+
   format!(
     "Hello from Rust {} on {}!",
     env!("CARGO_PKG_VERSION"),
-    std::env::consts::OS
+    os_name
   )
 }
 
@@ -214,6 +241,96 @@ pub fn read_clipboard_results() -> napi::Result<ClipboardContent> {
   }
 
   Ok(result)
+}
+
+/// クリップボードのバイナリデータを読みやすい形式で取得
+#[napi]
+pub fn read_clipboard_readable() -> napi::Result<ReadableClipboardContent> {
+  let raw_data = read_clipboard_raw()?;
+
+  let mut result = ReadableClipboardContent {
+    hex_view: None,
+    text_view: None,
+    mime_type: None,
+    size: raw_data.len() as u32,
+    preview: None,
+  };
+
+  // HEX形式で表示（最初の100バイトまで）
+  if !raw_data.is_empty() {
+    let hex_limit = std::cmp::min(raw_data.len(), 100);
+    result.hex_view = Some(
+      raw_data[..hex_limit]
+        .iter()
+        .map(|b| format!("{:02X}", b))
+        .collect::<Vec<String>>()
+        .join(" "),
+    );
+  }
+
+  // UTF-8テキストとして解釈を試みる
+  if let Ok(text) = String::from_utf8(raw_data.clone()) {
+    if !text.trim().is_empty() {
+      result.text_view = Some(text);
+    }
+  }
+
+  // MIMEタイプを推測（簡易版）
+  result.mime_type = detect_mime_type(&raw_data);
+
+  // プレビュー生成
+  result.preview = generate_preview(&raw_data);
+
+  Ok(result)
+}
+
+// MIMEタイプを推測する関数
+fn detect_mime_type(data: &[u8]) -> Option<String> {
+  if data.is_empty() {
+    return None;
+  }
+
+  // 簡易的なMIME判定ロジック
+  if data.starts_with(b"%PDF-") {
+    return Some("application/pdf".to_string());
+  } else if data.starts_with(&[0xFF, 0xD8, 0xFF]) {
+    return Some("image/jpeg".to_string());
+  } else if data.starts_with(b"PNG\r\n") {
+    return Some("image/png".to_string());
+  } else if String::from_utf8_lossy(data).contains("<!DOCTYPE html>") {
+    return Some("text/html".to_string());
+  }
+
+  // そのほかの一般的なテキスト形式を判定
+  if String::from_utf8(data[..std::cmp::min(data.len(), 1000)].to_vec()).is_ok() {
+    return Some("text/plain".to_string());
+  }
+
+  Some("application/octet-stream".to_string())
+}
+
+// データのプレビューを生成
+fn generate_preview(data: &[u8]) -> Option<String> {
+  if data.is_empty() {
+    return None;
+  }
+
+  let preview_len = std::cmp::min(data.len(), 20);
+  let preview_data = &data[..preview_len];
+
+  // 表示可能な文字のみ抽出
+  let preview: String = preview_data
+    .iter()
+    .map(|&b| {
+      if (32..=126).contains(&b) {
+        b as char
+      } else {
+        '.'
+      }
+    })
+    .collect();
+
+  Some(preview)
 }
 
 #[cfg(test)]

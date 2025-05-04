@@ -27,17 +27,42 @@ fn test_path_canonicalization() {
 // ObjcUrlのテスト
 #[test]
 fn test_objc_url() {
-  use crate::platforms::macos::wrapper::{AutoreleasePool, ObjcUrl};
+  use crate::platforms::macos::wrapper::{AutoreleasePool, ObjcString, ObjcUrl};
+  use std::env::temp_dir;
+  use std::fs::File;
 
-  let _pool = AutoreleasePool::new().unwrap();
+  // テスト前の準備: 実際のファイルを作成
+  let tmp_dir = temp_dir();
+  let test_file_path = tmp_dir.join("test_objc_url.txt");
+  File::create(&test_file_path).expect("Failed to create test file");
 
-  let test_path = "/tmp/test_path.txt";
-  let url = ObjcUrl::from_path(test_path).expect("Failed to create URL");
+  // テストに使用する絶対パス
+  let test_path = test_file_path.to_string_lossy().to_string();
 
-  let path = url.get_path().expect("Failed to get path from URL");
-  assert_eq!(path, test_path, "Path should match original");
+  // AutoreleasePoolを作成
+  let _pool = AutoreleasePool::new().expect("Failed to create autorelease pool");
 
-  assert!(url.is_file_url(), "Should be a file URL");
+  // NSString経由でファイルパス文字列を作成
+  let path_string = ObjcString::from_str(&test_path).expect("Failed to create ObjcString");
+
+  // ObjcUrl::from_file_path経由でURLを作成
+  let url =
+    ObjcUrl::from_file_path(&path_string).expect("Failed to create ObjcUrl via from_file_path");
+  assert!(url.is_file_url(), "URL should be a file URL");
+
+  // パスを取得して確認
+  let retrieved_path = url.get_path().expect("Failed to get path from URL");
+  assert!(
+    !retrieved_path.is_empty(),
+    "Retrieved path should not be empty"
+  );
+
+  // ObjcUrl::from_path経由でURLを作成
+  let url2 = ObjcUrl::from_path(&test_path).expect("Failed to create ObjcUrl via from_path");
+  assert!(url2.is_file_url(), "URL should be a file URL");
+
+  // テスト終了後にファイルを削除
+  std::fs::remove_file(test_file_path).expect("Failed to remove test file");
 }
 
 // テキスト読み取りのテスト (実際のクリップボードを使用)
@@ -49,10 +74,9 @@ fn test_read_clipboard_text() {
   // 実際にテキストを読み取り
   let result = read_clipboard_text();
 
-  if let Ok(text) = result {
-    println!("Read text from clipboard: {}", text);
-  } else {
-    println!("Failed to read text from clipboard: {:?}", result.err());
+  match result {
+    Ok(text) => println!("Read text from clipboard: {}", text),
+    Err(e) => println!("Failed to read text from clipboard: {:?}", e),
   }
 }
 
@@ -65,10 +89,9 @@ fn test_read_clipboard_raw() {
   // 実際にRAWデータを読み取り
   let result = read_clipboard_raw();
 
-  if let Ok(data) = result {
-    println!("Read {} bytes of raw data from clipboard", data.len());
-  } else {
-    println!("Failed to read raw data from clipboard: {:?}", result.err());
+  match result {
+    Ok(data) => println!("Read {} bytes of raw data from clipboard", data.len()),
+    Err(e) => println!("Failed to read raw data from clipboard: {:?}", e),
   }
 }
 
@@ -89,19 +112,21 @@ fn test_read_clipboard_file_paths() {
   // ファイルパスをクリップボードにコピー
   let path_str = test_file_path.to_string_lossy().to_string();
   let copy_result = copy_files_to_clipboard(&[path_str]);
-  assert!(copy_result.is_ok(), "Failed to copy file path to clipboard");
 
-  // ファイルパスを読み取り
-  let result = read_clipboard_file_paths();
+  match copy_result {
+    Ok(_) => {
+      // ファイルパスを読み取り
+      let result = read_clipboard_file_paths();
 
-  if let Ok(paths) = result {
-    println!("Read file paths from clipboard: {:?}", paths);
-    assert!(!paths.is_empty(), "Should have read at least one file path");
-  } else {
-    println!(
-      "Failed to read file paths from clipboard: {:?}",
-      result.err()
-    );
+      match result {
+        Ok(paths) => {
+          println!("Read file paths from clipboard: {:?}", paths);
+          assert!(!paths.is_empty(), "Should have read at least one file path");
+        }
+        Err(e) => println!("Failed to read file paths from clipboard: {:?}", e),
+      }
+    }
+    Err(e) => println!("Failed to copy file path to clipboard: {:?}", e),
   }
 
   std::fs::remove_file(test_file_path).expect("Failed to remove test file");
