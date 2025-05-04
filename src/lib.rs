@@ -27,8 +27,8 @@ fn platform_error_to_napi(e: std::io::Error) -> NapiError {
 
 /// クリップボードから読み取ったデータを保持する構造体
 /// `read_clipboard_results` から成功した値を抽出して生成することを想定
-#[napi(object)]
 #[derive(Debug, Default)]
+#[napi(object)]
 pub struct ClipboardContent {
   /// ファイルパスのリスト。読み取りに失敗した場合は空の配列。
   pub file_paths: Vec<String>,
@@ -49,22 +49,11 @@ pub struct ClipboardReadResult {
 /// Hello World関数 - 動作確認用
 #[napi]
 pub fn hello_world() -> String {
-  #[cfg(target_os = "windows")]
-  {
-    "Hello from Rust on Windows!".to_string()
-  }
-  #[cfg(target_os = "macos")]
-  {
-    "Hello from Rust on macOS!".to_string()
-  }
-  #[cfg(target_os = "linux")]
-  {
-    "Hello from Rust on Linux!".to_string()
-  }
-  #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
-  {
-    "Hello from Rust on an unknown OS!".to_string()
-  }
+  format!(
+    "Hello from Rust {} on {}!",
+    env!("CARGO_PKG_VERSION"),
+    std::env::consts::OS
+  )
 }
 
 /// Copies the given list of file paths to the OS clipboard.
@@ -134,7 +123,7 @@ pub fn read_clipboard_raw() -> NapiResult<Vec<u8>> {
 /// * If at least one of the reads succeeds, the function returns success with available data.
 /// * Only returns an error if both file paths and text reads fail.
 #[napi]
-pub fn read_clipboard_results() -> NapiResult<ClipboardContent> {
+pub fn read_clipboard_results() -> napi::Result<ClipboardContent> {
   let internal_result = {
     #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
     {
@@ -188,13 +177,40 @@ pub fn read_clipboard_results() -> NapiResult<ClipboardContent> {
   let mut result = ClipboardContent::default();
 
   // ファイルパスの結果を処理
-  if let Ok(paths) = internal_result.file_paths {
-    result.file_paths = paths;
+  match &internal_result.file_paths {
+    Ok(paths) => {
+      result.file_paths = paths.clone();
+    }
+    Err(_) => {
+      // ファイルパスの読み取りに失敗した場合は、rawデータをテキストとして試す
+      if result.text.is_none() && internal_result.text.is_err() {
+        // テキストもファイルパスも取得できなかった場合、raw読み取りを試みる
+        #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
+        match current_platform::read_clipboard_raw() {
+          Ok(raw_data) => {
+            if !raw_data.is_empty() {
+              // UTF-8として解釈を試みる
+              if let Ok(text) = String::from_utf8(raw_data.clone()) {
+                if !text.trim().is_empty() {
+                  result.text = Some(text);
+                }
+              }
+            }
+          }
+          Err(_) => {} // raw読み取りに失敗した場合は無視
+        }
+      }
+    }
   }
 
   // テキストの結果を処理
   if let Ok(text) = internal_result.text {
     result.text = text;
+  }
+
+  // 常にtextフィールドを確保する（nullでも含める）
+  if result.text.is_none() {
+    result.text = None;
   }
 
   Ok(result)

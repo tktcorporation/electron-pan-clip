@@ -1,5 +1,3 @@
-#![cfg(target_os = "macos")]
-
 // 内部モジュールの定義
 mod api;
 mod tests;
@@ -11,5 +9,3 @@ pub use api::{
 };
 
 // テスト用の公開API
-#[cfg(test)]
-pub use api::{ClipboardOperations, MockClipboard};

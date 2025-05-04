@@ -262,6 +262,17 @@ impl Pasteboard {
     }
   }
 
+  /// ペーストボードからidで指定された特定タイプの文字列を読み取る
+  pub fn string_for_type_id(&self, type_id: id) -> Option<ObjcString> {
+    let string: id = unsafe { msg_send![self.pasteboard, stringForType:type_id] };
+
+    if string != nil {
+      Some(ObjcString { ns_string: string })
+    } else {
+      None
+    }
+  }
+
   /// ペーストボードの利用可能なタイプを取得
   pub fn available_types(&self) -> Option<ObjcArray> {
     let types: id = unsafe { msg_send![self.pasteboard, types] };

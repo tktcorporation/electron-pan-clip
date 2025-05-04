@@ -56,4 +56,4 @@ export declare function readClipboardRaw(): NapiResult
  * * If at least one of the reads succeeds, the function returns success with available data.
  * * Only returns an error if both file paths and text reads fail.
  */
-export declare function readClipboardResults(): NapiResult
+export declare function readClipboardResults(): ClipboardContent

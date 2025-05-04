@@ -116,7 +116,7 @@ fmt:
 fix:
   @echo "🔧 自動修正可能な問題を修正中..."
   cargo clippy --fix --allow-staged
-  nr lint:fix
+  yarn lint:fix
   just fmt
 
 # watchモードでの開発

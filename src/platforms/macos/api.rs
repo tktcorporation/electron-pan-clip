@@ -1,6 +1,6 @@
 #![cfg(target_os = "macos")]
 
-use cocoa::base::{id, nil};
+use cocoa::base::id;
 use objc::{class, msg_send, sel, sel_impl};
 use std::io::{Error, ErrorKind};
 use std::path::Path;
@@ -194,26 +194,51 @@ pub fn read_clipboard_text() -> Result<String, Error> {
   let pasteboard = Pasteboard::general()
     .ok_or_else(|| Error::new(ErrorKind::Other, "Failed to get general pasteboard"))?;
 
-  // テキスト形式を指定
-  let type_str = ObjcString::from_str("public.utf8-plain-text")
-    .ok_or_else(|| Error::new(ErrorKind::Other, "Failed to create NSString for text type"))?;
+  // サポートするテキストタイプの優先順位リスト
+  let supported_text_types = [
+    "public.utf8-plain-text",
+    "public.text",
+    "NSStringPboardType",
+    "com.apple.traditional-mac-plain-text",
+  ];
 
-  // テキストデータを取得
-  let text = pasteboard.string_for_type(&type_str);
+  // 優先タイプを最初に試す
+  for type_name in &supported_text_types {
+    let type_str = match ObjcString::from_str(type_name) {
+      Some(s) => s,
+      None => continue,
+    };
 
-  match text {
-    Some(text_obj) => match text_obj.to_rust_string() {
-      Some(rust_str) => Ok(rust_str),
-      None => Err(Error::new(
-        ErrorKind::InvalidData,
-        "Failed to convert NSString to Rust string",
-      )),
-    },
-    None => Err(Error::new(
-      ErrorKind::NotFound,
-      "No text content found on clipboard",
-    )),
+    // テキストデータを取得
+    if let Some(text_obj) = pasteboard.string_for_type(&type_str) {
+      if let Some(rust_str) = text_obj.to_rust_string() {
+        if !rust_str.is_empty() {
+          return Ok(rust_str);
+        }
+      }
+    }
   }
+
+  // 利用可能なタイプを取得して試す
+  if let Some(types) = pasteboard.available_types() {
+    let count = types.count();
+    for i in 0..count {
+      if let Some(type_id) = types.object_at_index(i) {
+        if let Some(text_obj) = pasteboard.string_for_type_id(type_id) {
+          if let Some(rust_str) = text_obj.to_rust_string() {
+            if !rust_str.is_empty() {
+              return Ok(rust_str);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  Err(Error::new(
+    ErrorKind::NotFound,
+    "No text content found on clipboard",
+  ))
 }
 
 /// クリップボードからRAWデータを読み取る
@@ -237,22 +262,74 @@ pub fn read_clipboard_raw() -> Result<Vec<u8>, Error> {
     ));
   }
 
-  // 最初のタイプを取得
-  let first_type = types
-    .object_at_index(0)
-    .ok_or_else(|| Error::new(ErrorKind::Other, "Failed to get first available type"))?;
+  // サポートするタイプの優先順位リスト
+  let supported_types = [
+    "public.utf8-plain-text",
+    "public.text",
+    "NSStringPboardType",
+    "public.data",
+  ];
 
-  // データを取得
-  let data = pasteboard
-    .data_for_type(first_type)
-    .ok_or_else(|| Error::new(ErrorKind::NotFound, "No data found for the available type"))?;
+  // 優先タイプを最初に試す
+  for type_name in &supported_types {
+    let type_str = match ObjcString::from_str(type_name) {
+      Some(s) => s,
+      None => continue,
+    };
 
-  // データをバイト配列に変換
-  let obj_data = ObjcData::from_id(data);
-  match obj_data.to_bytes() {
-    Some(bytes) => Ok(bytes),
-    None => Ok(Vec::new()), // 空のデータとして返す
+    if let Some(data) = pasteboard.data_for_type(type_str.as_id()) {
+      let obj_data = ObjcData::from_id(data);
+      if let Some(bytes) = obj_data.to_bytes() {
+        if !bytes.is_empty() {
+          return Ok(bytes);
+        }
+      }
+    }
   }
+
+  // テキストデータを直接試す（データではなく文字列として）
+  let text_type = ObjcString::from_str("public.utf8-plain-text");
+  if let Some(text_type) = text_type {
+    if let Some(text_obj) = pasteboard.string_for_type(&text_type) {
+      if let Some(text) = text_obj.to_rust_string() {
+        if !text.is_empty() {
+          return Ok(text.into_bytes());
+        }
+      }
+    }
+  }
+
+  // 利用可能なすべてのタイプを順番に試す
+  let count = types.count();
+  for i in 0..count {
+    if let Some(type_id) = types.object_at_index(i) {
+      if let Some(data) = pasteboard.data_for_type(type_id) {
+        let obj_data = ObjcData::from_id(data);
+        if let Some(bytes) = obj_data.to_bytes() {
+          if !bytes.is_empty() {
+            return Ok(bytes);
+          }
+        }
+      }
+    }
+  }
+
+  // ファイルパスが含まれている場合、それをテキストとして返す
+  match read_clipboard_file_paths() {
+    Ok(paths) => {
+      if !paths.is_empty() {
+        let joined = paths.join("\n");
+        return Ok(joined.into_bytes());
+      }
+    }
+    Err(_) => {} // ファイルパスの読み取りに失敗した場合は無視
+  }
+
+  // 何も見つからなかった場合はエラー
+  Err(Error::new(
+    ErrorKind::NotFound,
+    "No data found in clipboard for any available type",
+  ))
 }
 
 /// クリップボードからファイルパスを読み取る

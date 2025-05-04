@@ -1,15 +1,13 @@
 #![cfg(target_os = "macos")]
 
-use super::api::*;
-use super::wrapper::*;
-use std::env::temp_dir;
-use std::fs::File;
-use std::path::Path;
-
 // パス正規化のテスト
 #[test]
 fn test_path_canonicalization() {
   // 一時ファイルを作成
+  use std::env::temp_dir;
+  use std::fs::File;
+  use std::path::Path;
+
   let tmp_dir = temp_dir();
   let test_file_path = tmp_dir.join("test_macos_canonical.txt");
 
@@ -29,6 +27,8 @@ fn test_path_canonicalization() {
 // ObjcUrlのテスト
 #[test]
 fn test_objc_url() {
+  use crate::platforms::macos::wrapper::{AutoreleasePool, ObjcUrl};
+
   let _pool = AutoreleasePool::new().unwrap();
 
   let test_path = "/tmp/test_path.txt";
@@ -44,6 +44,8 @@ fn test_objc_url() {
 #[test]
 #[ignore] // 通常は無視されるテスト
 fn test_read_clipboard_text() {
+  use crate::platforms::macos::api::read_clipboard_text;
+
   // 実際にテキストを読み取り
   let result = read_clipboard_text();
 
@@ -58,6 +60,8 @@ fn test_read_clipboard_text() {
 #[test]
 #[ignore] // 通常は無視されるテスト
 fn test_read_clipboard_raw() {
+  use crate::platforms::macos::api::read_clipboard_raw;
+
   // 実際にRAWデータを読み取り
   let result = read_clipboard_raw();
 
@@ -72,6 +76,10 @@ fn test_read_clipboard_raw() {
 #[test]
 #[ignore] // 通常は無視されるテスト
 fn test_read_clipboard_file_paths() {
+  use crate::platforms::macos::api::{copy_files_to_clipboard, read_clipboard_file_paths};
+  use std::env::temp_dir;
+  use std::fs::File;
+
   // 一時ファイルを作成
   let tmp_dir = temp_dir();
   let test_file_path = tmp_dir.join("test_macos_read_paths.txt");
