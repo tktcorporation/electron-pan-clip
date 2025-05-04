@@ -36,9 +36,22 @@ pub fn hello_world() -> String {
   }
 }
 
-/// 複数ファイルをクリップボードにコピーする
+/// Copies the given list of file paths to the OS clipboard.
+///
+/// # Arguments
+/// * `paths` - A list of absolute or relative file paths to copy.
+///   - The paths will be registered to the clipboard in the appropriate format for each OS.
+///   - Passing an empty list will result in an error.
+///
+/// # Returns
+/// * Returns `Ok(())` if the operation succeeds.
+/// * Returns `Err(napi::Error)` if an error occurs.
+///
+/// # Note
+/// * This function will actually change the contents of the system clipboard.
+/// * Please be careful when running tests.
 #[napi]
-pub fn copy_files(paths: Vec<String>) -> napi::Result<()> {
+pub fn copy_file_paths_to_clipboard(paths: Vec<String>) -> napi::Result<()> {
   if paths.is_empty() {
     return Err(napi::Error::from_reason("No file paths provided"));
   }
@@ -78,8 +91,8 @@ mod tests {
 
   // 空の入力に対するエラーテスト
   #[test]
-  fn test_copy_files_empty_input() {
-    let result = copy_files(vec![]);
+  fn test_copy_file_paths_to_clipboard_empty_input() {
+    let result = copy_file_paths_to_clipboard(vec![]);
     assert!(result.is_err());
     if let Err(err) = result {
       assert!(err.reason.contains("No file paths provided"));
@@ -108,7 +121,7 @@ mod tests {
     }
 
     // ファイルをクリップボードにコピー
-    let result = copy_files(temp_files.clone());
+    let result = copy_file_paths_to_clipboard(temp_files.clone());
 
     // コピー成功を確認
     assert!(result.is_ok(), "Failed to copy files: {:?}", result);

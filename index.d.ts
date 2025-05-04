@@ -5,5 +5,20 @@
 
 /** Hello World関数 - 動作確認用 */
 export declare function helloWorld(): string
-/** 複数ファイルをクリップボードにコピーする */
-export declare function copyFiles(paths: Array<string>): void
+/**
+ * Copies the given list of file paths to the OS clipboard.
+ *
+ * # Arguments
+ * * `paths` - A list of absolute or relative file paths to copy.
+ *   - The paths will be registered to the clipboard in the appropriate format for each OS.
+ *   - Passing an empty list will result in an error.
+ *
+ * # Returns
+ * * Returns `Ok(())` if the operation succeeds.
+ * * Returns `Err(napi::Error)` if an error occurs.
+ *
+ * # Note
+ * * This function will actually change the contents of the system clipboard.
+ * * Please be careful when running tests.
+ */
+export declare function copyFilePathsToClipboard(paths: Array<string>): void

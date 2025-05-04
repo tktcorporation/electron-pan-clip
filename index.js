@@ -310,7 +310,7 @@ if (!nativeBinding) {
   throw new Error(`Failed to load native binding`)
 }
 
-const { helloWorld, copyFiles } = nativeBinding
+const { helloWorld, copyFilePathsToClipboard } = nativeBinding
 
 module.exports.helloWorld = helloWorld
-module.exports.copyFiles = copyFiles
+module.exports.copyFilePathsToClipboard = copyFilePathsToClipboard

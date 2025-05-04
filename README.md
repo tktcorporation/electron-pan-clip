@@ -26,11 +26,11 @@ npm install clip-filepaths
 ## Usage
 
 ```typescript
-import { copyFiles } from 'clip-filepaths';
+import { copyFilePathsToClipboard } from 'clip-filepaths';
 
 // Copy file paths to clipboard
 const filePaths: string[] = ['/path/to/file1.txt', '/path/to/file2.jpg'];
-copyFiles(filePaths);
+copyFilePathsToClipboard(filePaths);
 console.log('File paths copied to clipboard successfully');
 ```
 
