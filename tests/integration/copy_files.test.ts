@@ -1,8 +1,8 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { copyFilePathsToClipboard } from "../../";
+import { afterEach, describe, expect, it } from "vitest";
+import { writeClipboardFilePaths } from "../../";
 
 // 一時ファイル作成関数を定義
 interface TempFile {
@@ -70,7 +70,7 @@ describe("clip-filepaths", () => {
 	});
 
 	it("should be defined", () => {
-		expect(copyFilePathsToClipboard).toBeDefined();
+		expect(writeClipboardFilePaths).toBeDefined();
 	});
 
 	// CI 環境ではクリップボードへのアクセスが失敗するためスキップ
@@ -81,7 +81,7 @@ describe("clip-filepaths", () => {
 
 		try {
 			// クリップボードにコピー
-			await copyFilePathsToClipboard(testFiles);
+			await writeClipboardFilePaths(testFiles);
 
 			// エラーが発生しなければテスト成功
 			tempFile.cleanup();
@@ -106,7 +106,7 @@ describe("clip-filepaths", () => {
 	it("should reject with invalid file paths", () => {
 		const invalidPaths = ["/path/to/nonexistent/file.png"];
 		try {
-			copyFilePathsToClipboard(invalidPaths);
+			writeClipboardFilePaths(invalidPaths);
 			// Linuxの場合、無効なパスでもファイルURIを生成できるため成功する可能性がある
 			if (process.platform === "linux") {
 				expect(true).toBe(true);
@@ -121,7 +121,7 @@ describe("clip-filepaths", () => {
 	});
 
 	it("should handle empty array", () => {
-		expect(() => copyFilePathsToClipboard([])).toThrow();
+		expect(() => writeClipboardFilePaths([])).toThrow();
 	});
 
 	// OSごとのテスト（条件付きテスト）- CI環境ではスキップ
@@ -129,7 +129,7 @@ describe("clip-filepaths", () => {
 		(process.env.CI === "true" ? it.skip : it)(
 			"Windows: should copy files in CF_HDROP format",
 			() => {
-				copyFilePathsToClipboard(testFiles);
+				writeClipboardFilePaths(testFiles);
 				// Windows固有のテスト
 				expect(true).toBe(true);
 			},
@@ -140,7 +140,7 @@ describe("clip-filepaths", () => {
 		(process.env.CI === "true" ? it.skip : it)(
 			"macOS: should copy files using NSPasteboard",
 			() => {
-				copyFilePathsToClipboard(testFiles);
+				writeClipboardFilePaths(testFiles);
 				// macOS固有のテスト
 				expect(true).toBe(true);
 			},
@@ -152,7 +152,7 @@ describe("clip-filepaths", () => {
 			"Linux: should copy files in text/uri-list format",
 			() => {
 				try {
-					copyFilePathsToClipboard(testFiles);
+					writeClipboardFilePaths(testFiles);
 					// Linux固有のテスト
 					expect(true).toBe(true);
 				} catch (error: unknown) {

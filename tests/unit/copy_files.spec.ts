@@ -4,7 +4,7 @@ import os from "node:os";
 import { platform } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { copyFilePathsToClipboard, helloWorld } from "../../index";
+import { helloWorld, writeClipboardFilePaths } from "../../index";
 
 describe("clip-filepaths", () => {
 	describe("helloWorld", () => {
@@ -24,7 +24,7 @@ describe("clip-filepaths", () => {
 		});
 	});
 
-	describe("copyFilePathsToClipboard", () => {
+	describe("writeClipboardFilePaths", () => {
 		let testFiles: string[] = [];
 
 		// 各テスト前に一時ファイルを作成
@@ -55,7 +55,7 @@ describe("clip-filepaths", () => {
 		});
 
 		it("should reject empty array", () => {
-			expect(() => copyFilePathsToClipboard([])).toThrow(
+			expect(() => writeClipboardFilePaths([])).toThrow(
 				/No file paths provided/,
 			);
 		});
@@ -67,7 +67,7 @@ describe("clip-filepaths", () => {
 				try {
 					// 実際のファイルをクリップボードにコピー
 					// 注意: このテストは実際のクリップボードを変更します
-					copyFilePathsToClipboard(testFiles);
+					writeClipboardFilePaths(testFiles);
 
 					// 注: クリップボードの内容を自動的に検証するのは難しいため、
 					// エラーが発生しなければ成功とみなします
@@ -93,11 +93,11 @@ describe("clip-filepaths", () => {
 			];
 
 			if (platform() === "darwin" || platform() === "linux") {
-				expect(() => copyFilePathsToClipboard(nonExistentFiles)).toThrowError(
+				expect(() => writeClipboardFilePaths(nonExistentFiles)).toThrowError(
 					/No valid URIs could be created from the paths/,
 				);
 			} else {
-				expect(() => copyFilePathsToClipboard(nonExistentFiles)).not.toThrow();
+				expect(() => writeClipboardFilePaths(nonExistentFiles)).not.toThrow();
 			}
 		});
 	});
