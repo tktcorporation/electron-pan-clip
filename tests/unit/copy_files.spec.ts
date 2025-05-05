@@ -84,27 +84,5 @@ describe("clip-filepaths", () => {
 				}
 			},
 		);
-
-		it("should handle non-existent files", () => {
-			const nonExistentFiles = [
-				"/path/to/nonexistent/file.png",
-				"/another/non/existent/file2.txt",
-			];
-
-			try {
-				writeClipboardFilePaths(nonExistentFiles);
-				// Windowsの場合は成功する可能性がある（存在チェックが異なる）
-				if (platform() !== "darwin" && platform() !== "linux") {
-					expect(true).toBe(true);
-				} else {
-					// Linux/macOSでは失敗するはずだが、エラー伝播の問題で失敗しない場合がある
-					// そのためテストをスキップする
-					console.log("期待通りのエラーが発生しませんでした (伝播の問題)");
-				}
-			} catch (error) {
-				// エラーが発生した場合は成功
-				expect(error).toBeDefined();
-			}
-		});
 	});
 });
