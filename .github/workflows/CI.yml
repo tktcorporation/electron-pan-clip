@@ -225,7 +225,7 @@ jobs:
         run: ls -R .
         shell: bash
       - name: Test bindings
-        run: docker run --rm -v $(pwd):/build -w /build node:${{ matrix.node }}-slim bash -c "npm i -g @antfu/ni && nr test"
+        run: docker run --rm -v $(pwd):/build -w /build node:${{ matrix.node }}-slim bash -c "npm i -g @antfu/ni && ./scripts/run-with-xvfb.sh nr test"
   test-linux-x64-musl-binding:
     name: Test bindings on x86_64-unknown-linux-musl - node@${{ matrix.node }}
     needs:
@@ -257,7 +257,7 @@ jobs:
         run: ls -R .
         shell: bash
       - name: Test bindings
-        run: docker run --rm -v $(pwd):/build -w /build node:${{ matrix.node }}-alpine sh -c "npm i -g @antfu/ni && nr test"
+        run: docker run --rm -v $(pwd):/build -w /build node:${{ matrix.node }}-alpine sh -c "npm i -g @antfu/ni && ./scripts/run-with-xvfb.sh nr test"
   test-linux-aarch64-gnu-binding:
     name: Test bindings on aarch64-unknown-linux-gnu - node@${{ matrix.node }}
     needs:
