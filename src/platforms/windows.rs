@@ -88,7 +88,7 @@ pub fn copy_files_to_clipboard(paths: &[String]) -> Result<(), Error> {
     let dropfiles_ptr = buffer_ptr as *mut DROPFILES;
     *dropfiles_ptr = DROPFILES {
       pFiles: dropfiles_size as u32, // パスリストへのオフセット
-      pt: POINT { x: 0, y: 0 },      // 使わないのでゼロ初期化
+      pt: zeroed(),                  // 使わないのでゼロ初期化
       fNC: 0,                        // 非クライアント領域座標ではない
       fWide: 1,                      // ワイド文字（UTF-16）を使用
     };
