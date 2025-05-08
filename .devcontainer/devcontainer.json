@@ -42,7 +42,8 @@
 			"files.watcherExclude": {
 				"**/.git/*/**": true,
 				"**/node_modules/*/**": true
-			}
+			},
+      "rust-analyzer.procMacro.ignored": { "napi-derive": ["napi"] }
 		}
 	},
   "runArgs": [

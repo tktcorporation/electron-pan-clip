@@ -1,0 +1,53 @@
+name: Test
+'on':
+  pull_request: null
+
+jobs:
+  test-all:
+    env:
+      CI: false
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        node: [20, 22]  # Node.jsバージョン例（NAPI用）
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup node
+        uses: actions/setup-node@v4
+        with:
+            node-version: ${{ matrix.node }}
+            cache: yarn
+      - name: install
+        run: yarn install
+      - name: Install
+        uses: dtolnay/rust-toolchain@stable
+      - name: Install deps (Linux only)
+        if: runner.os == 'Linux'
+        run: |
+            sudo apt-get update
+            sudo apt-get install -y xvfb xclip xsel
+            sudo apt-get install -y --no-install-recommends \
+                pkg-config \
+                libx11-dev \
+                libxtst-dev \
+                libdbus-1-dev
+      - name: Start Xvfb and export DISPLAY (Linux only)
+        if: runner.os == 'Linux'
+        run: |
+            Xvfb :99 -screen 0 1024x768x24 &
+            echo "DISPLAY=:99" >> $GITHUB_ENV
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+            path: |
+                ~/.cargo/registry/index/
+                ~/.cargo/registry/cache/
+                ~/.cargo/git/db/
+                .cargo-cache
+                target/
+            key: ${{ runner.os }}-cargo-${{ matrix.node }}
+      - name: Build and Test
+        run: |
+          yarn build
+          yarn test

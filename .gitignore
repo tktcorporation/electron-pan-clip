@@ -222,3 +222,9 @@ docs/api/
 
 # Rust test artifacts
 tests/**/*.rs.bk
+
+# Nix関連
+.direnv/
+result
+result-*
+.nix-*

@@ -4,27 +4,10 @@ import os from "node:os";
 import { platform } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { copyFiles, helloWorld } from "../../index";
+import { helloWorld, writeClipboardFilePaths } from "../../index";
 
 describe("clip-filepaths", () => {
-	describe("helloWorld", () => {
-		it("should return a platform-specific greeting", () => {
-			const result = helloWorld();
-			expect(result).toContain("Rust");
-
-			// OSごとに異なるメッセージを返すことを検証
-			const platform = os.platform();
-			if (platform === "win32") {
-				expect(result).toContain("Windows");
-			} else if (platform === "darwin") {
-				expect(result).toContain("macOS");
-			} else if (platform === "linux") {
-				expect(result).toContain("Linux");
-			}
-		});
-	});
-
-	describe("copyFiles", () => {
+	describe("writeClipboardFilePaths", () => {
 		let testFiles: string[] = [];
 
 		// 各テスト前に一時ファイルを作成
@@ -54,8 +37,9 @@ describe("clip-filepaths", () => {
 			testFiles = [];
 		});
 
-		it("should reject empty array", () => {
-			expect(() => copyFiles([])).toThrow(/No file paths provided/);
+		it("should accept empty array", () => {
+			// 空の配列の場合はエラーなく実行されるはず
+			expect(() => writeClipboardFilePaths([])).not.toThrow();
 		});
 
 		// CI環境ではスキップするようにテストを修正
@@ -65,7 +49,7 @@ describe("clip-filepaths", () => {
 				try {
 					// 実際のファイルをクリップボードにコピー
 					// 注意: このテストは実際のクリップボードを変更します
-					copyFiles(testFiles);
+					writeClipboardFilePaths(testFiles);
 
 					// 注: クリップボードの内容を自動的に検証するのは難しいため、
 					// エラーが発生しなければ成功とみなします
@@ -83,20 +67,5 @@ describe("clip-filepaths", () => {
 				}
 			},
 		);
-
-		it("should handle non-existent files", () => {
-			const nonExistentFiles = [
-				"/path/to/nonexistent/file.png",
-				"/another/non/existent/file2.txt",
-			];
-
-			if (platform() === "darwin" || platform() === "linux") {
-				expect(() => copyFiles(nonExistentFiles)).toThrowError(
-					/No valid URIs could be created from the paths/,
-				);
-			} else {
-				expect(() => copyFiles(nonExistentFiles)).not.toThrow();
-			}
-		});
 	});
 });

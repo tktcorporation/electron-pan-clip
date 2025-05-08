@@ -1,21 +1,23 @@
 # clip-filepaths
 
-📋 Copy multiple file paths (including images) to clipboard - A cross platform utility.
+📋 Copy and read file paths and text from clipboard - A cross platform utility.
 
 <img height="100" src="https://github.com/user-attachments/assets/836b665b-5a53-4b22-b8dc-4cc77a106999" >
 
 ## Overview
 
-This library provides functionality for copying file paths to the clipboard in Electron applications. It supports Windows, macOS, and Linux platforms. Note that this library copies file paths (references) to the clipboard, not the actual file contents.
+This library provides functionality for copying and reading file paths and text from the clipboard in Electron applications. It supports Windows, macOS, and Linux platforms. 
 
 Built with [napi-rs](https://napi.rs/) and Rust, this library offers:
-- **Multiple file path support**: This library allows copying multiple file paths at once
+- **Multiple file path support**: Copy and read multiple file paths at once
+- **Text support**: Read text from the clipboard
+- **Raw data support**: Read raw binary data from the clipboard
 - Full TypeScript support
 - Cross-platform compatibility
 
 ## Motivation
 
-When developing Electron applications, I needed a way to copy multiple photo file paths to the clipboard at once. This library was created to provide a simple solution for batch file path operations, making photo management and other tasks more efficient.
+When developing Electron applications, I needed a way to copy multiple photo file paths to the clipboard at once and read content from the clipboard. This library was created to provide a simple solution for batch file path operations, making photo management and other tasks more efficient.
 
 ## Installation
 
@@ -25,13 +27,46 @@ npm install clip-filepaths
 
 ## Usage
 
+### Copying File Paths
+
 ```typescript
-import { copyFiles } from 'clip-filepaths';
+import { copyFilePathsToClipboard } from 'clip-filepaths';
 
 // Copy file paths to clipboard
 const filePaths: string[] = ['/path/to/file1.txt', '/path/to/file2.jpg'];
-copyFiles(filePaths);
+copyFilePathsToClipboard(filePaths);
 console.log('File paths copied to clipboard successfully');
+```
+
+### Reading Clipboard Content
+
+```typescript
+import { readClipboardContent } from 'clip-filepaths';
+
+// Read both file paths and text from clipboard
+const content = readClipboardContent();
+console.log('File paths:', content.filePaths);
+console.log('Text:', content.text);
+
+// Check if clipboard has file paths
+if (content.filePaths.length > 0) {
+  console.log('Clipboard contains file paths');
+}
+
+// Check if clipboard has text
+if (content.text) {
+  console.log('Clipboard contains text');
+}
+```
+
+### Reading Raw Data
+
+```typescript
+import { readClipboardRaw } from 'clip-filepaths';
+
+// Read raw binary data from clipboard
+const rawData = readClipboardRaw();
+console.log(`Read ${rawData.length} bytes of raw data from clipboard`);
 ```
 
 ## Demo

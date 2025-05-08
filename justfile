@@ -1,7 +1,4 @@
-#!/usr/bin/env -S just --justfile
-
-set windows-shell := ["powershell.exe", "-NoLogo", "-Command"]
-set shell := ["bash", "-cu"]
+#!/usr/bin/env -S direnv exec / just --justfile
 
 # エイリアス定義
 alias r := ready
@@ -19,9 +16,10 @@ _default:
 init:
   # Rust related init
   cargo binstall watchexec-cli cargo-insta typos-cli cargo-shear dprint -y
-  npm install -g pnpm typescript @napi-rs/cli @antfu/ni
+  
+  # npm install -g pnpm typescript @napi-rs/cli @antfu/ni
   # Node.js related init
-  ni
+  yarn install
   # Linuxの依存関係をインストール
   just install-linux-deps
 
@@ -44,33 +42,44 @@ check-rust-lint:
   @echo "🔍 Rustのリントをチェック中..."
   cargo clippy -- -D warnings
 
+check-all-platforms:
+  @echo "🔍 全てのプラットフォームでチェック中..."
+  rustup target add aarch64-apple-darwin
+  export CARGO_TARGET_X86_64_APPLE_DARWIN_LINKER="$(xcrun --find clang)" && \
+    cargo build --release --target aarch64-apple-darwin
+  cargo build --release --target x86_64-pc-windows-msvc
+  cargo build --release --target x86_64-unknown-linux-gnu
+  cargo check --target x86_64-apple-darwin
+  cargo check --target x86_64-pc-windows-msvc
+  cargo check --target x86_64-unknown-linux-gnu
+
 # TypeScriptのフォーマットチェック
 check-ts-format:
   @echo "🔍 TypeScriptのフォーマットをチェック中..."
-  nr check:format:ts
+  yarn check:format:ts
 
 # TypeScriptのリントチェック
 check-ts-lint:
   @echo "🔍 TypeScriptのリントをチェック中..."
-  nr check:lint:ts
+  yarn check:lint:ts
 
 # 型チェック
 check-types:
   @echo "🔍 TypeScript型をチェック中..."
-  nr check:types
+  yarn check:types
 
 # 高速チェック (CI用)
 ci-check:
   @echo "🚀 CI用の高速チェックを実行中..."
   cargo check
   cargo clippy --all-targets -- -D warnings
-  nr check:types
-  nr check:lint:ts
+  yarn check:types
+  yarn check:lint:ts
 
 # oxlintを使用する場合（高速なJSリント）
 check-oxlint:
   @echo "🔍 oxlintでJavaScriptファイルをチェック中..."
-  nr check:oxlint
+  yarn check:oxlint
 
 # 全てのテストを実行
 test:
@@ -83,31 +92,31 @@ test:
 test-for-each-os:
   @echo "🧪 Windowsでテストを実行中..."
   cargo test
-  nr test
+  yarn test
 
 [macos]
 test-for-each-os:
   @echo "🧪 macOSでテストを実行中..."
   cargo test
-  nr test
+  yarn test
 
-[unix]
+[linux]
 test-for-each-os:
   @echo "🧪 Xvfbを使用してテストを実行中..."
   ./scripts/run-with-xvfb.sh cargo test
-  ./scripts/run-with-xvfb.sh nr test
+  ./scripts/run-with-xvfb.sh yarn test
 
 # コードをフォーマット
 fmt:
   @echo "✨ コードをフォーマット中..."
   cargo fmt --all
-  nr fmt:ts
+  yarn fmt:ts
 
 # リント問題を自動修正
 fix:
   @echo "🔧 自動修正可能な問題を修正中..."
   cargo clippy --fix --allow-staged
-  nr lint:fix
+  yarn lint:fix
   just fmt
 
 # watchモードでの開発
@@ -144,10 +153,10 @@ install-hook:
 build:
   @echo "🏗️ プロジェクトをビルド中..."
   cargo build --release
-  nr build
-  
+  yarn build
+
 # ドキュメント生成
-[unix]
+[linux]
 doc:
   RUSTDOCFLAGS='-D warnings' cargo doc --no-deps
 
@@ -156,7 +165,7 @@ doc:
   $Env:RUSTDOCFLAGS='-D warnings'; cargo doc --no-deps
 
 # Linuxの依存関係をインストール
-[unix]
+[linux]
 install-linux-deps:
   @echo "📦 Linux依存関係をインストール中..."
   sudo apt-get update
@@ -182,8 +191,12 @@ install-linux-deps:
 install-linux-deps:
   @echo "📦 Windows環境では不要なため、何もしません"
 
+[macos]
+install-linux-deps:
+  @echo "📦 macOS環境では不要なため、何もしません"
+
 # Windowsクロスコンパイル環境のセットアップ
-[unix]
+[linux]
 setup-windows-cross:
   @echo "🪟 Windowsクロスコンパイル環境をセットアップ中..."
   cargo install cargo-xwin
@@ -191,7 +204,7 @@ setup-windows-cross:
   @echo "✅ Windowsクロスコンパイル環境のセットアップが完了しました"
 
 # Windows向けのクロスコンパイルビルド
-[unix]
+[linux]
 build-windows:
   @echo "🏗️ Windows向けにクロスコンパイル中..."
   cargo xwin build --release --target x86_64-pc-windows-msvc
