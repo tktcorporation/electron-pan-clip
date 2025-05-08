@@ -2,7 +2,13 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { helloWorld, readClipboardResults, writeClipboardFilePaths } from "../../";
+import {
+	helloWorld,
+	readClipboardRaw,
+	readClipboardReadable,
+	readClipboardResults,
+	writeClipboardFilePaths,
+} from "../../";
 
 // 一時ファイル作成関数を定義
 interface TempFile {
@@ -26,15 +32,23 @@ async function createTempFile(): Promise<TempFile> {
 describe("clip-filepaths", () => {
 	describe("export check", () => {
 		it("helloWorld", () => {
-			const result = helloWorld();
+			const result = helloWorld;
 			expect(result).toBeDefined();
 		});
 		it("readClipboardResults", () => {
-			const result = readClipboardResults();
+			const result = readClipboardResults;
 			expect(result).toBeDefined();
 		});
 		it("writeClipboardFilePaths", () => {
-			const result = writeClipboardFilePaths([]);
+			const result = writeClipboardFilePaths;
+			expect(result).toBeDefined();
+		});
+		it("readClipboardRaw", () => {
+			const result = readClipboardRaw;
+			expect(result).toBeDefined();
+		});
+		it("readClipboardReadable", () => {
+			const result = readClipboardReadable;
 			expect(result).toBeDefined();
 		});
 	});

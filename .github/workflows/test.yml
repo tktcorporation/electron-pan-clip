@@ -1,0 +1,28 @@
+name: Test
+'on':
+  pull_request: null
+
+jobs:
+  test-all:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        node: [20, 22]  # Node.jsバージョン例（NAPI用）
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Node (if needed)
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Install deps (Linux only)
+        if: runner.os == 'Linux'
+        run: sudo apt-get install -y xvfb xclip xsel
+      - name: Start Xvfb (Linux only)
+        if: runner.os == 'Linux'
+        run: Xvfb :99 -screen 0 1024x768x24 & export DISPLAY=:99
+      - name: Build and Test
+        run: |
+          cargo build --all && cargo test --all
+          npm install  # Node addon build (if needed)
+          npm test     # Run Node.js tests
