@@ -10,11 +10,26 @@ jobs:
         node: [20, 22]  # Node.jsバージョン例（NAPI用）
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v3
-      - name: Setup Node (if needed)
-        uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
+      - name: Setup node
+        uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node }}
+            node-version: ${{ matrix.node }}
+            cache: yarn
+      - name: install
+        run: yarn install
+      - name: Install
+        uses: dtolnay/rust-toolchain@stable
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+            path: |
+                ~/.cargo/registry/index/
+                ~/.cargo/registry/cache/
+                ~/.cargo/git/db/
+                .cargo-cache
+                target/
+            key: ${{ runner.os }}-cargo-${{ matrix.node }}
       - name: Install deps (Linux only)
         if: runner.os == 'Linux'
         run: sudo apt-get install -y xvfb xclip xsel
