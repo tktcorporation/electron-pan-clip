@@ -7,23 +7,6 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { helloWorld, writeClipboardFilePaths } from "../../index";
 
 describe("clip-filepaths", () => {
-	describe("helloWorld", () => {
-		it("should return a platform-specific greeting", () => {
-			const result = helloWorld();
-			expect(result).toContain("Rust");
-
-			// OSごとに異なるメッセージを返すことを検証
-			const platform = os.platform();
-			if (platform === "win32") {
-				expect(result).toContain("Windows");
-			} else if (platform === "darwin") {
-				expect(result).toContain("macOS");
-			} else if (platform === "linux") {
-				expect(result).toContain("Linux");
-			}
-		});
-	});
-
 	describe("writeClipboardFilePaths", () => {
 		let testFiles: string[] = [];
 

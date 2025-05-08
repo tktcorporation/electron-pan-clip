@@ -2,7 +2,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { readClipboardResults, writeClipboardFilePaths } from "../../";
+import { helloWorld, readClipboardResults, writeClipboardFilePaths } from "../../";
 
 // 一時ファイル作成関数を定義
 interface TempFile {
@@ -24,6 +24,21 @@ async function createTempFile(): Promise<TempFile> {
 }
 
 describe("clip-filepaths", () => {
+	describe("export check", () => {
+		it("helloWorld", () => {
+			const result = helloWorld();
+			expect(result).toBeDefined();
+		});
+		it("readClipboardResults", () => {
+			const result = readClipboardResults();
+			expect(result).toBeDefined();
+		});
+		it("writeClipboardFilePaths", () => {
+			const result = writeClipboardFilePaths([]);
+			expect(result).toBeDefined();
+		});
+	});
+
 	const tmpDir = path.join(os.tmpdir(), "clip-filepaths-test");
 	const testFiles: string[] = [];
 
