@@ -23,6 +23,5 @@ jobs:
         run: Xvfb :99 -screen 0 1024x768x24 & export DISPLAY=:99
       - name: Build and Test
         run: |
-          cargo build --all && cargo test --all
-          npm install  # Node addon build (if needed)
-          npm test     # Run Node.js tests
+          yarn build
+          yarn test
