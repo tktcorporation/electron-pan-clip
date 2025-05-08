@@ -25,15 +25,18 @@ jobs:
       - name: Install deps (Linux only)
         if: runner.os == 'Linux'
         run: |
+            sudo apt-get update
             sudo apt-get install -y xvfb xclip xsel
             sudo apt-get install -y --no-install-recommends \
                 pkg-config \
                 libx11-dev \
                 libxtst-dev \
                 libdbus-1-dev
-      - name: Start Xvfb (Linux only)
+      - name: Start Xvfb and export DISPLAY (Linux only)
         if: runner.os == 'Linux'
-        run: Xvfb :99 -screen 0 1024x768x24 & export DISPLAY=:99
+        run: |
+            Xvfb :99 -screen 0 1024x768x24 &
+            echo "DISPLAY=:99" >> $GITHUB_ENV
       - name: Cache cargo
         uses: actions/cache@v4
         with:
@@ -44,12 +47,6 @@ jobs:
                 .cargo-cache
                 target/
             key: ${{ runner.os }}-cargo-${{ matrix.node }}
-      - name: Install deps (Linux only)
-        if: runner.os == 'Linux'
-        run: sudo apt-get install -y xvfb xclip xsel
-      - name: Start Xvfb (Linux only)
-        if: runner.os == 'Linux'
-        run: Xvfb :99 -screen 0 1024x768x24 & export DISPLAY=:99
       - name: Build and Test
         run: |
           yarn build
