@@ -4,6 +4,8 @@ name: Test
 
 jobs:
   test-all:
+    env:
+      CI: false
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
@@ -20,6 +22,18 @@ jobs:
         run: yarn install
       - name: Install
         uses: dtolnay/rust-toolchain@stable
+      - name: Install deps (Linux only)
+        if: runner.os == 'Linux'
+        run: |
+            sudo apt-get install -y xvfb xclip xsel
+            sudo apt-get install -y --no-install-recommends \
+                pkg-config \
+                libx11-dev \
+                libxtst-dev \
+                libdbus-1-dev
+      - name: Start Xvfb (Linux only)
+        if: runner.os == 'Linux'
+        run: Xvfb :99 -screen 0 1024x768x24 & export DISPLAY=:99
       - name: Cache cargo
         uses: actions/cache@v4
         with:
