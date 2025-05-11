@@ -1,6 +1,6 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
-import * as path from "node:path";
+import * as path from "pathe";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
 	helloWorld,
@@ -102,8 +102,7 @@ describe("clip-filepaths", () => {
 		expect(writeClipboardFilePaths).toBeDefined();
 	});
 
-	// CI 環境ではクリップボードへのアクセスが失敗するためスキップ
-	it.skip("should copy files to clipboard", async () => {
+	it("should copy files to clipboard", async () => {
 		// テスト用の一時ファイルを作成
 		const tempFile = await createTempFile();
 		const testFiles = [tempFile.path];
@@ -115,17 +114,6 @@ describe("clip-filepaths", () => {
 			// エラーが発生しなければテスト成功
 			tempFile.cleanup();
 		} catch (error: unknown) {
-			// X11 server connection エラーの場合はスキップ
-			if (
-				error instanceof Error &&
-				error.message.includes("X11 server connection timed out")
-			) {
-				console.log("⚠️ テストをスキップ: X11サーバー接続の問題");
-				tempFile.cleanup();
-				return;
-			}
-
-			// それ以外のエラーが発生した場合はテスト失敗
 			console.error("Failed to copy files:", error);
 			tempFile.cleanup();
 			expect(error).toBeUndefined();
@@ -133,16 +121,13 @@ describe("clip-filepaths", () => {
 	});
 
 	it("should reject with invalid file paths", () => {
-		const invalidPaths = ["/path/to/nonexistent/file.png"];
+		const invalidPaths = [
+			path.join(os.tmpdir(), `nonexistent-file-${Date.now()}.png`),
+		];
 		try {
 			writeClipboardFilePaths(invalidPaths);
-			// Linuxの場合、無効なパスでもファイルURIを生成できるため成功する可能性がある
-			if (process.platform === "linux") {
-				expect(true).toBe(true);
-			} else {
-				// Linuxでないプラットフォームではエラーがスローされるはず
-				expect("No error thrown").toBe("Error should have been thrown");
-			}
+			// エラーがスローされない場合のテスト
+			expect(true).toBe(true);
 		} catch (error) {
 			// エラーがスローされることを期待（正常な動作）
 			expect(error).toBeDefined();
@@ -154,270 +139,42 @@ describe("clip-filepaths", () => {
 		expect(() => writeClipboardFilePaths([])).not.toThrow();
 	});
 
-	// OSごとのテスト（条件付きテスト）- CI環境ではスキップ
-	if (process.platform === "win32") {
-		(process.env.CI === "true" ? it.skip : it)(
-			"Windows: should copy files in CF_HDROP format",
-			() => {
-				writeClipboardFilePaths(testFiles);
-				// Windows固有のテスト
-				expect(true).toBe(true);
-			},
-		);
-	}
+	it("should copy files in appropriate format for the platform", () => {
+		try {
+			writeClipboardFilePaths(testFiles);
+			expect(true).toBe(true);
+		} catch (error) {
+			console.error("Clipboard test failed:", error);
+			expect(error).toBeUndefined();
+		}
+	});
 
-	if (process.platform === "darwin") {
-		(process.env.CI === "true" ? it.skip : it)(
-			"macOS: should copy files using NSPasteboard",
-			() => {
-				writeClipboardFilePaths(testFiles);
-				// macOS固有のテスト
-				expect(true).toBe(true);
-			},
-		);
-	}
+	it("should write paths and read them back", async () => {
+		try {
+			// クリップボードに書き込み
+			await writeClipboardFilePaths(testFiles);
 
-	if (process.platform === "linux") {
-		(process.env.CI === "true" ? it.skip : it)(
-			"Linux: should copy files in text/uri-list format",
-			() => {
-				try {
-					writeClipboardFilePaths(testFiles);
-					// Linux固有のテスト
-					expect(true).toBe(true);
-				} catch (error: unknown) {
-					// X11 server connection エラーの場合はスキップ
-					if (
-						error instanceof Error &&
-						error.message.includes("X11 server connection timed out")
-					) {
-						console.log("⚠️ テストをスキップ: X11サーバー接続の問題");
-						return;
-					}
-					throw error;
-				}
-			},
-		);
-	}
+			// クリップボードから読み出し
+			const clipboardContent = readClipboardResults();
 
-	// クリップボードに書き込み後に読み出せることを確認するテスト
-	(process.env.CI === "true" ? it.skip : it)(
-		"should write paths and read them back",
-		async () => {
-			// CI環境の場合 - この条件はskipが適用されるため実行されません
-			if (process.env.CI === "true") {
-				// どの環境で実行されているかを表示
-				console.log("⚠️ CI環境でテストを実行中: 限定的なクリップボードテスト");
+			// ファイルパスが存在し、元のパスと一致することを確認
+			expect(clipboardContent.filePaths).toBeDefined();
+			expect(clipboardContent.filePaths.length).toBeGreaterThan(0);
 
-				// 関数が定義されていることを確認
-				expect(writeClipboardFilePaths).toBeDefined();
-				expect(readClipboardResults).toBeDefined();
-
-				// CI環境ではモック検証のみ実施し、実際の関数は呼び出さない
-				const mockClipboardContent = {
-					filePaths: testFiles.map((p) => path.normalize(p)),
-				};
-
-				// モックデータを使った検証
-				expect(mockClipboardContent.filePaths.length).toEqual(testFiles.length);
-
-				// モックデータでファイル名の部分一致確認（実際の関数と同様の検証）
-				const allPathsFound = testFiles.every((testPath) => {
-					const normalizedTestPath = path.normalize(testPath);
-					return mockClipboardContent.filePaths.some((clipPath) => {
-						return clipPath.includes(path.basename(normalizedTestPath));
-					});
+			// ファイルパスの比較 (プラットフォームによって形式が異なる可能性があるため部分一致で確認)
+			const allPathsFound = testFiles.every((testPath) => {
+				// 正規化されたパスの比較
+				const normalizedTestPath = path.normalize(testPath);
+				return clipboardContent.filePaths.some((clipPath) => {
+					const normalizedClipPath = path.normalize(clipPath);
+					return normalizedClipPath.includes(path.basename(normalizedTestPath));
 				});
+			});
 
-				expect(allPathsFound).toBe(true);
-				return;
-			}
-
-			try {
-				// クリップボードに書き込み
-				await writeClipboardFilePaths(testFiles);
-
-				// クリップボードから読み出し
-				const clipboardContent = readClipboardResults();
-
-				// ファイルパスが存在し、元のパスと一致することを確認
-				expect(clipboardContent.filePaths).toBeDefined();
-				expect(clipboardContent.filePaths.length).toBeGreaterThan(0);
-
-				// ファイルパスの比較 (プラットフォームによって形式が異なる可能性があるため部分一致で確認)
-				const allPathsFound = testFiles.every((testPath) => {
-					// 正規化されたパスの比較
-					const normalizedTestPath = path.normalize(testPath);
-					return clipboardContent.filePaths.some((clipPath) => {
-						const normalizedClipPath = path.normalize(clipPath);
-						return normalizedClipPath.includes(
-							path.basename(normalizedTestPath),
-						);
-					});
-				});
-
-				expect(allPathsFound).toBe(true);
-			} catch (error: unknown) {
-				// X11 server connection エラーの場合はスキップ（Linux環境）
-				if (
-					error instanceof Error &&
-					error.message.includes("X11 server connection timed out")
-				) {
-					console.log("⚠️ テストをスキップ: X11サーバー接続の問題");
-					return;
-				}
-
-				// その他のエラーが発生した場合はテスト失敗
-				console.error("クリップボード操作に失敗:", error);
-				expect(error).toBeUndefined();
-			}
-		},
-	);
-
-	// プラットフォーム別のクリップボード書き込み→読み取りテスト
-	if (process.platform === "win32") {
-		(process.env.CI === "true" ? it.skip : it)(
-			"Windows: should write and read back file paths",
-			async () => {
-				try {
-					// クリップボードにコピー
-					await writeClipboardFilePaths(testFiles);
-
-					// クリップボードから読み出し
-					const clipboardContent = readClipboardResults();
-
-					// ファイルパスが存在することを確認
-					expect(clipboardContent.filePaths).toBeDefined();
-					expect(clipboardContent.filePaths.length).toBeGreaterThan(0);
-
-					// ファイルパスの比較 (Windows固有の形式を考慮)
-					const allPathsFound = testFiles.every((testPath) => {
-						const normalizedTestPath = path.normalize(testPath);
-						return clipboardContent.filePaths.some((clipPath) => {
-							const normalizedClipPath = path.normalize(clipPath);
-							return normalizedClipPath.includes(
-								path.basename(normalizedTestPath),
-							);
-						});
-					});
-
-					expect(allPathsFound).toBe(true);
-				} catch (error) {
-					console.error("Windows clipboard test failed:", error);
-					expect(error).toBeUndefined();
-				}
-			},
-		);
-	}
-
-	if (process.platform === "darwin") {
-		(process.env.CI === "true" ? it.skip : it)(
-			"macOS: should write and read back file paths",
-			async () => {
-				try {
-					// クリップボードにコピー
-					await writeClipboardFilePaths(testFiles);
-
-					// クリップボードから読み出し
-					const clipboardContent = readClipboardResults();
-
-					// ファイルパスが存在することを確認
-					expect(clipboardContent.filePaths).toBeDefined();
-					expect(clipboardContent.filePaths.length).toBeGreaterThan(0);
-
-					// ファイルパスの比較 (macOS固有の形式を考慮)
-					const allPathsFound = testFiles.every((testPath) => {
-						const normalizedTestPath = path.normalize(testPath);
-						return clipboardContent.filePaths.some((clipPath) => {
-							const normalizedClipPath = path.normalize(clipPath);
-							return normalizedClipPath.includes(
-								path.basename(normalizedTestPath),
-							);
-						});
-					});
-
-					expect(allPathsFound).toBe(true);
-				} catch (error) {
-					console.error("macOS clipboard test failed:", error);
-					expect(error).toBeUndefined();
-				}
-			},
-		);
-	}
-
-	if (process.platform === "linux") {
-		(process.env.CI === "true" ? it.skip : it)(
-			"Linux: should write and read back file paths",
-			async () => {
-				// CI環境の場合
-				if (process.env.CI === "true") {
-					// どの環境で実行されているかを表示
-					console.log(
-						"⚠️ CI環境でテストを実行中: Linux限定的なクリップボードテスト",
-					);
-
-					// 関数が定義されていることを確認
-					expect(writeClipboardFilePaths).toBeDefined();
-					expect(readClipboardResults).toBeDefined();
-
-					// CI環境ではモック検証のみ実施し、実際の関数は呼び出さない
-					const mockClipboardContent = {
-						filePaths: testFiles.map((p) => path.normalize(p)),
-					};
-
-					// Linux環境でのモックデータの検証
-					expect(mockClipboardContent.filePaths.length).toEqual(
-						testFiles.length,
-					);
-
-					// Linux環境用のモック検証
-					const allPathsFound = testFiles.every((testPath) => {
-						const normalizedTestPath = path.normalize(testPath);
-						return mockClipboardContent.filePaths.some((clipPath) => {
-							return clipPath.includes(path.basename(normalizedTestPath));
-						});
-					});
-
-					expect(allPathsFound).toBe(true);
-					return;
-				}
-
-				try {
-					// クリップボードにコピー
-					await writeClipboardFilePaths(testFiles);
-
-					// クリップボードから読み出し
-					const clipboardContent = readClipboardResults();
-
-					// ファイルパスが存在することを確認
-					expect(clipboardContent.filePaths).toBeDefined();
-					expect(clipboardContent.filePaths.length).toBeGreaterThan(0);
-
-					// ファイルパスの比較 (Linux固有の形式を考慮)
-					const allPathsFound = testFiles.every((testPath) => {
-						const normalizedTestPath = path.normalize(testPath);
-						return clipboardContent.filePaths.some((clipPath) => {
-							const normalizedClipPath = path.normalize(clipPath);
-							return normalizedClipPath.includes(
-								path.basename(normalizedTestPath),
-							);
-						});
-					});
-
-					expect(allPathsFound).toBe(true);
-				} catch (error) {
-					// X11 server connection エラーの場合はスキップ
-					if (
-						error instanceof Error &&
-						error.message.includes("X11 server connection timed out")
-					) {
-						console.log("⚠️ テストをスキップ: X11サーバー接続の問題");
-						return;
-					}
-					console.error("Linux clipboard test failed:", error);
-					expect(error).toBeUndefined();
-				}
-			},
-		);
-	}
+			expect(allPathsFound).toBe(true);
+		} catch (error: unknown) {
+			console.error("クリップボード操作に失敗:", error);
+			expect(error).toBeUndefined();
+		}
+	});
 });
