@@ -105,25 +105,19 @@ describe("clip-filepaths", () => {
 			const tempFile = await createTempFile();
 			const testFiles = [tempFile.path];
 
-			try {
-				// クリップボードにコピー
-				await writeClipboardFilePaths(testFiles);
+			// クリップボードにコピー
+			await writeClipboardFilePaths(testFiles);
 
-				// エラーが発生しなければテスト成功
-				tempFile.cleanup();
-			} catch (error: unknown) {
-				console.error("Failed to copy files:", error);
-				tempFile.cleanup();
-				expect(error).toBeUndefined();
-			}
+			// ファイルをクリーンアップ
+			tempFile.cleanup();
 		});
 
-		it("should reject with invalid file paths", () => {
+		it("should reject with invalid file paths", async () => {
 			const invalidPaths = [
 				path.join(os.tmpdir(), `nonexistent-file-${Date.now()}.png`),
 			];
 			try {
-				writeClipboardFilePaths(invalidPaths);
+				await writeClipboardFilePaths(invalidPaths);
 				// エラーがスローされない場合のテスト
 				expect(true).toBe(false);
 			} catch (error) {
@@ -137,18 +131,12 @@ describe("clip-filepaths", () => {
 			expect(() => writeClipboardFilePaths([])).not.toThrow();
 		});
 
-		it("should copy files in appropriate format for the platform", () => {
-			try {
-				writeClipboardFilePaths(testFiles);
-				expect(true).toBe(true);
-			} catch (error) {
-				console.error("Clipboard test failed:", error);
-				expect(error).toBeUndefined();
-			}
+		it("should copy files in appropriate format for the platform", async () => {
+			await writeClipboardFilePaths(testFiles);
 		});
 	});
 
-	describe("readClipboardFilePaths", () => {
+	describe("readClipboardResults", () => {
 		const tmpDir = path.join(os.tmpdir(), "clip-filepaths-read-test");
 		const testFiles: string[] = [];
 
@@ -196,34 +184,27 @@ describe("clip-filepaths", () => {
 		});
 
 		it("should write paths and read them back", async () => {
-			try {
-				// クリップボードに書き込み
-				await writeClipboardFilePaths(testFiles);
+			// クリップボードに書き込み
+			await writeClipboardFilePaths(testFiles);
 
-				// クリップボードから読み出し
-				const clipboardContent = readClipboardResults();
+			// クリップボードから読み出し
+			const clipboardContent = readClipboardResults();
 
-				// ファイルパスが存在し、元のパスと一致することを確認
-				expect(clipboardContent.filePaths).toBeDefined();
-				expect(clipboardContent.filePaths.length).toBeGreaterThan(0);
+			// ファイルパスが存在し、元のパスと一致することを確認
+			expect(clipboardContent.filePaths).toBeDefined();
+			expect(clipboardContent.filePaths.length).toBeGreaterThan(0);
 
-				// ファイルパスの比較 (プラットフォームによって形式が異なる可能性があるため部分一致で確認)
-				const allPathsFound = testFiles.every((testPath) => {
-					// 正規化されたパスの比較
-					const normalizedTestPath = path.normalize(testPath);
-					return clipboardContent.filePaths.some((clipPath) => {
-						const normalizedClipPath = path.normalize(clipPath);
-						return normalizedClipPath.includes(
-							path.basename(normalizedTestPath),
-						);
-					});
+			// ファイルパスの比較 (プラットフォームによって形式が異なる可能性があるため部分一致で確認)
+			const allPathsFound = testFiles.every((testPath) => {
+				// 正規化されたパスの比較
+				const normalizedTestPath = path.normalize(testPath);
+				return clipboardContent.filePaths.some((clipPath) => {
+					const normalizedClipPath = path.normalize(clipPath);
+					return normalizedClipPath.includes(path.basename(normalizedTestPath));
 				});
+			});
 
-				expect(allPathsFound).toBe(true);
-			} catch (error: unknown) {
-				console.error("クリップボード操作に失敗:", error);
-				expect(error).toBeUndefined();
-			}
+			expect(allPathsFound).toBe(true);
 		});
 	});
 });
