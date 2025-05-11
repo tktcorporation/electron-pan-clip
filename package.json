@@ -63,6 +63,7 @@
     "build:debug": "napi build --platform",
     "prepublishOnly": "napi prepublish -t npm",
     "test": "vitest run",
+    "test:unit": "vitest run tests/unit",
     "test:watch": "vitest",
     "universal": "napi universal",
     "version": "napi version",
