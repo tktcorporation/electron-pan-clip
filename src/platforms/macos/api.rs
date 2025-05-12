@@ -130,10 +130,7 @@ pub fn write_clipboard_file_paths(paths: &[String]) -> Result<(), Error> {
 
   // 無効なパスが一つでもあればエラー
   if !errors.is_empty() {
-    let error_message = format!(
-      "Some paths could not be processed: {}",
-      errors.join("; ")
-    );
+    let error_message = format!("Some paths could not be processed: {}", errors.join("; "));
     return Err(Error::new(ErrorKind::InvalidInput, error_message));
   }
 

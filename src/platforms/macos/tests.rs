@@ -99,7 +99,7 @@ fn test_read_clipboard_raw() {
 #[test]
 #[ignore] // 通常は無視されるテスト
 fn test_read_clipboard_file_paths() {
-  use crate::platforms::macos::api::{write_clipboard_file_paths, read_clipboard_file_paths};
+  use crate::platforms::macos::api::{read_clipboard_file_paths, write_clipboard_file_paths};
   use std::env::temp_dir;
   use std::fs::File;
 

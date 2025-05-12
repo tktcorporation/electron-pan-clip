@@ -23,8 +23,8 @@ use platforms::linux as current_platform;
 // napi エラー型エイリアス
 type NapiError = napi::Error;
 use napi::Status; // Import Status
-use std::io::{Error as IoError, ErrorKind};
-use std::fs; // ... existing code ...
+use std::fs;
+use std::io::{Error as IoError, ErrorKind}; // ... existing code ...
 
 // OS固有のエラーをNapiエラーに変換するヘルパー関数
 #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]

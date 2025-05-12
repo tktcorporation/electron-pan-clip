@@ -146,7 +146,9 @@ describe("clip-filepaths", () => {
 			);
 
 			// 例外がスローされ、エラーメッセージがパターンに一致することを確認
-			expect(() => writeClipboardFilePaths(invalidPaths)).toThrow(expectedPattern);
+			expect(() => writeClipboardFilePaths(invalidPaths)).toThrow(
+				expectedPattern,
+			);
 		});
 
 		it("空の配列を指定した場合はエラーをスローしないこと", () => {

@@ -1,8 +1,8 @@
 // Linux向けのクリップボード操作実装
 
+use std::fs;
 use std::io::{Error, ErrorKind};
 use std::process::Command;
-use std::fs;
 
 // xclip コマンドを使用してファイルパスをクリップボードにコピーする
 pub fn write_clipboard_file_paths(paths: &[String]) -> Result<(), Error> {
@@ -29,10 +29,7 @@ pub fn write_clipboard_file_paths(paths: &[String]) -> Result<(), Error> {
 
     // 無効なパスが一つでもあればエラー
     if !errors.is_empty() {
-      let error_message = format!(
-        "Some paths could not be processed: {}",
-        errors.join("; ")
-      );
+      let error_message = format!("Some paths could not be processed: {}", errors.join("; "));
       return Err(Error::new(ErrorKind::InvalidInput, error_message));
     }
   }
@@ -69,7 +66,7 @@ pub fn write_clipboard_file_paths(paths: &[String]) -> Result<(), Error> {
         println!("Copied {} files to clipboard on Linux", paths.len());
       }
       Ok(())
-    },
+    }
     Ok(exit_status) => Err(Error::new(
       ErrorKind::Other,
       format!(
