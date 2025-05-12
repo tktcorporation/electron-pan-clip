@@ -130,52 +130,23 @@ describe("clip-filepaths", () => {
 
 		it("存在しないファイルパスを指定した場合はエラーをスローすること", () => {
 			const invalidFileName = `nonexistent-${crypto.randomUUID()}.png`;
-			const invalidPaths = [path.join(os.tmpdir(), invalidFileName)];
+			const invalidPath = path.join(os.tmpdir(), invalidFileName);
+			const invalidPaths = [invalidPath];
 
 			// 念のため存在していれば削除しておく
-			if (fs.existsSync(invalidPaths[0])) {
-				fs.unlinkSync(invalidPaths[0]);
+			if (fs.existsSync(invalidPath)) {
+				fs.unlinkSync(invalidPath);
 			}
 
-			// 共通のエラーチェック
-			// プラットフォームに関係なく、存在しないファイルはエラーになる
-			expect(() => writeClipboardFilePaths(invalidPaths)).toThrow();
-			
-			// 詳細なエラーメッセージのチェック
-			try {
-				writeClipboardFilePaths(invalidPaths);
-				// ここに到達すべきではない - 存在しないファイルパスの指定でエラーが発生するはず
-				expect(true).toBe(false);
-			} catch (error) {
-				const errorMessage = (error as Error).message;
-				
-				// プラットフォーム共通のエラー検証
-				// 1. エラーは Error インスタンスである
-				expect(error).toBeInstanceOf(Error);
-				
-				// 2. エラーメッセージにパスが含まれている（パス名のみで、ファイル名は検証）
-				expect(errorMessage).toContain(invalidFileName);
-				
-				// 3. プラットフォーム固有のエラーチェックを行わず、共通のエラーパターンのみを検証
-				// どのプラットフォームでも「パスが存在しない/見つからない」という内容のエラーになるはず
-				const commonErrorPatterns = [
-					/not found/i,
-					/no such file/i,
-					/not exist/i,
-					/invalid/i,
-					/does not exist/i,
-					/couldn't be processed/i,
-					/could not be processed/i,
-					/failed/i
-				];
-				
-				// いずれかのパターンに一致することを確認
-				const matchesPattern = commonErrorPatterns.some(pattern => 
-					pattern.test(errorMessage)
-				);
-				
-				expect(matchesPattern).toBe(true);
-			}
+			// 共通のエラーメッセージパターンを生成
+			// 例: "linux clipboard error: Some paths could not be processed: Failed to canonicalize path /tmp/nonexistent-xxxx.png: ..."
+			const expectedPattern = new RegExp(
+				`clipboard error: .*Some paths could not be processed: .*${invalidFileName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`,
+				"i",
+			);
+
+			// 例外がスローされ、エラーメッセージがパターンに一致することを確認
+			expect(() => writeClipboardFilePaths(invalidPaths)).toThrow(expectedPattern);
 		});
 
 		it("空の配列を指定した場合はエラーをスローしないこと", () => {
