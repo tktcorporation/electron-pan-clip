@@ -118,28 +118,6 @@ pub fn write_clipboard_file_paths(paths: Vec<String>) -> NapiResult<()> {
   Ok(())
 }
 
-/// Reads raw binary data from the OS clipboard.
-///
-/// # Returns
-/// * Returns `Ok(Vec<u8>)` with the clipboard raw content if successful.
-/// * Returns `Err(napi::Error)` if an error occurs.
-///
-/// # Note
-/// * This function reads the current raw contents of the system clipboard.
-/// * The format of the data depends on what application wrote to the clipboard.
-#[napi]
-pub fn read_clipboard_raw() -> NapiResult<Vec<u8>> {
-  #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
-  {
-    current_platform::read_clipboard_raw().map_err(platform_error_to_napi)
-  }
-
-  #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
-  {
-    return Err(NapiError::from_reason("Unsupported operating system"));
-  }
-}
-
 /// Reads content from the OS clipboard, trying to extract both file paths and text independently.
 ///
 /// # Returns
@@ -244,96 +222,6 @@ pub fn read_clipboard_results() -> napi::Result<ClipboardContent> {
   Ok(result)
 }
 
-/// クリップボードのバイナリデータを読みやすい形式で取得
-#[napi]
-pub fn read_clipboard_readable() -> napi::Result<ReadableClipboardContent> {
-  let raw_data = read_clipboard_raw()?;
-
-  let mut result = ReadableClipboardContent {
-    hex_view: None,
-    text_view: None,
-    mime_type: None,
-    size: raw_data.len() as u32,
-    preview: None,
-  };
-
-  // HEX形式で表示（最初の100バイトまで）
-  if !raw_data.is_empty() {
-    let hex_limit = std::cmp::min(raw_data.len(), 100);
-    result.hex_view = Some(
-      raw_data[..hex_limit]
-        .iter()
-        .map(|b| format!("{:02X}", b))
-        .collect::<Vec<String>>()
-        .join(" "),
-    );
-  }
-
-  // UTF-8テキストとして解釈を試みる
-  if let Ok(text) = String::from_utf8(raw_data.clone()) {
-    if !text.trim().is_empty() {
-      result.text_view = Some(text);
-    }
-  }
-
-  // MIMEタイプを推測（簡易版）
-  result.mime_type = detect_mime_type(&raw_data);
-
-  // プレビュー生成
-  result.preview = generate_preview(&raw_data);
-
-  Ok(result)
-}
-
-// MIMEタイプを推測する関数
-fn detect_mime_type(data: &[u8]) -> Option<String> {
-  if data.is_empty() {
-    return None;
-  }
-
-  // 簡易的なMIME判定ロジック
-  if data.starts_with(b"%PDF-") {
-    return Some("application/pdf".to_string());
-  } else if data.starts_with(&[0xFF, 0xD8, 0xFF]) {
-    return Some("image/jpeg".to_string());
-  } else if data.starts_with(b"PNG\r\n") {
-    return Some("image/png".to_string());
-  } else if String::from_utf8_lossy(data).contains("<!DOCTYPE html>") {
-    return Some("text/html".to_string());
-  }
-
-  // そのほかの一般的なテキスト形式を判定
-  if String::from_utf8(data[..std::cmp::min(data.len(), 1000)].to_vec()).is_ok() {
-    return Some("text/plain".to_string());
-  }
-
-  Some("application/octet-stream".to_string())
-}
-
-// データのプレビューを生成
-fn generate_preview(data: &[u8]) -> Option<String> {
-  if data.is_empty() {
-    return None;
-  }
-
-  let preview_len = std::cmp::min(data.len(), 20);
-  let preview_data = &data[..preview_len];
-
-  // 表示可能な文字のみ抽出
-  let preview: String = preview_data
-    .iter()
-    .map(|&b| {
-      if (32..=126).contains(&b) {
-        b as char
-      } else {
-        '.'
-      }
-    })
-    .collect();
-
-  Some(preview)
-}
-
 #[cfg(test)]
 mod tests {
   use super::*;
@@ -362,7 +250,6 @@ mod tests {
   // 実際のファイルを作成してコピーするテスト
   // 注意: このテストは実際のクリップボードを変更します
   #[test]
-  #[ignore] // 通常のCIでは実行しないよう無視フラグを付ける
   fn test_copy_real_files() {
     // テスト用の一時ファイルを作成
     let mut temp_files = Vec::new();
@@ -395,25 +282,8 @@ mod tests {
     }
   }
 
-  // RAWデータ読み取り関数のテスト
-  #[test]
-  #[ignore]
-  fn test_read_clipboard_raw() {
-    // テスト用のバイナリデータをクリップボードに書き込む必要がある
-    // 各プラットフォーム固有のAPIを使用
-
-    // データを読み取り
-    let result = read_clipboard_raw();
-
-    // エラーがなければOK（内容の検証は難しいため）
-    if let Ok(data) = result {
-      assert!(!data.is_empty(), "Raw clipboard data should not be empty");
-    }
-  }
-
   // クリップボード内容読み取り関数のテスト（ファイルパスを読み取る場合）
   #[test]
-  #[ignore]
   fn test_read_clipboard_results_file_paths() {
     // テスト用の一時ファイルを作成
     let mut test_paths = Vec::new();
@@ -474,21 +344,5 @@ mod tests {
     for path in test_paths {
       let _ = std::fs::remove_file(path);
     }
-  }
-
-  // クリップボード内容読み取り関数のテスト（空の場合）
-  #[test]
-  #[ignore]
-  fn test_read_clipboard_results_empty() {
-    // NAPI環境が必要なため、通常の `cargo test` では実行できない
-    // 統合テストなどで Node.js 環境から呼び出す必要がある
-    /*
-    let results = read_clipboard_results(); // env が必要
-    assert!(results.is_ok(), "read_clipboard_results failed unexpectedly: {:?}", results.err());
-
-    let content_results = results.unwrap();
-    // JsObject のプロパティを確認するアサーションが必要
-    */
-    println!("Skipping test_read_clipboard_results_empty as it requires NAPI Env");
   }
 }

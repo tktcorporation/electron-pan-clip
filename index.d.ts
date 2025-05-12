@@ -46,18 +46,6 @@ export declare function helloWorld(): string
  */
 export declare function writeClipboardFilePaths(paths: Array<string>): NapiResult
 /**
- * Reads raw binary data from the OS clipboard.
- *
- * # Returns
- * * Returns `Ok(Vec<u8>)` with the clipboard raw content if successful.
- * * Returns `Err(napi::Error)` if an error occurs.
- *
- * # Note
- * * This function reads the current raw contents of the system clipboard.
- * * The format of the data depends on what application wrote to the clipboard.
- */
-export declare function readClipboardRaw(): NapiResult
-/**
  * Reads content from the OS clipboard, trying to extract both file paths and text independently.
  *
  * # Returns
@@ -70,5 +58,3 @@ export declare function readClipboardRaw(): NapiResult
  * * Only returns an error if both file paths and text reads fail.
  */
 export declare function readClipboardResults(): ClipboardContent
-/** クリップボードのバイナリデータを読みやすい形式で取得 */
-export declare function readClipboardReadable(): ReadableClipboardContent

@@ -218,7 +218,6 @@ mod tests {
 
   // 不正なパスを扱えるかのテスト
   #[test]
-  #[ignore] // 一時的
   fn test_invalid_paths() {
     let invalid_paths = vec![
       "/path/does/not/exist/linux.txt".to_string(),
@@ -240,7 +239,6 @@ mod tests {
 
   // 実際のクリップボード操作テスト（CIではスキップ推奨）
   #[test]
-  #[ignore] // CI 環境では X11 がないため失敗する可能性が高い
   fn test_copy_to_clipboard() {
     let tmp_dir = temp_dir();
     let test_file_path = tmp_dir.join("test_linux_clipboard.txt");

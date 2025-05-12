@@ -4,8 +4,6 @@ import * as path from "pathe";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
 	helloWorld,
-	readClipboardRaw,
-	readClipboardReadable,
 	readClipboardResults,
 	writeClipboardFilePaths,
 } from "../../";
@@ -41,14 +39,6 @@ describe("clip-filepaths", () => {
 		});
 		it("writeClipboardFilePaths", () => {
 			const result = writeClipboardFilePaths;
-			expect(result).toBeDefined();
-		});
-		it("readClipboardRaw", () => {
-			const result = readClipboardRaw;
-			expect(result).toBeDefined();
-		});
-		it("readClipboardReadable", () => {
-			const result = readClipboardReadable;
 			expect(result).toBeDefined();
 		});
 	});
@@ -189,6 +179,7 @@ describe("clip-filepaths", () => {
 
 			// クリップボードから読み出し
 			const clipboardContent = readClipboardResults();
+			console.log('clipboardContent', clipboardContent);
 
 			// ファイルパスが存在し、元のパスと一致することを確認
 			expect(clipboardContent.filePaths).toBeDefined();
