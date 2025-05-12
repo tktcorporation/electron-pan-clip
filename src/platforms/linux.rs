@@ -24,15 +24,20 @@ pub fn copy_files_to_clipboard(paths: &[String]) -> Result<(), Error> {
     }
   }
 
-  // 有効なURIが一つも生成できなかった場合
+  // エラーがあった場合は、処理を中断してエラーを返す
+  if !errors.is_empty() {
+    let error_message = format!("Some paths could not be processed: {}", errors.join("; "));
+    // 入力に不正（存在しないパス）が含まれていたため InvalidInput を返す
+    return Err(Error::new(ErrorKind::InvalidInput, error_message));
+  }
+
+  // 有効なURIがない場合はエラー
   if uri_paths.is_empty() {
-    return Err(Error::new(
-      ErrorKind::InvalidInput,
-      format!(
-        "No valid URIs could be created from the paths. Errors: {}",
-        errors.join("; ")
-      ),
-    ));
+    let error_message = format!(
+      "No valid URIs could be created from the paths. Errors: {}",
+      errors.join("; ")
+    );
+    return Err(Error::new(ErrorKind::InvalidInput, error_message));
   }
 
   // 一部の失敗があった場合は警告を出す
@@ -233,7 +238,7 @@ mod tests {
       assert_eq!(err.kind(), ErrorKind::InvalidInput);
       assert!(err
         .to_string()
-        .contains("No valid URIs could be created from the paths"));
+        .contains("Some paths could not be processed"));
     }
   }
 

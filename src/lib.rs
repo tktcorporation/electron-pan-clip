@@ -23,11 +23,13 @@ use platforms::linux as current_platform;
 // napi エラー型エイリアス
 type NapiResult<T> = napi::Result<T>;
 type NapiError = napi::Error;
+use napi::Status; // Import Status
 
 // OS固有のエラーをNapiエラーに変換するヘルパー関数
 #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
 fn platform_error_to_napi(e: std::io::Error) -> NapiError {
-  NapiError::from_reason(format!("{} clipboard error: {}", std::env::consts::OS, e))
+  let reason = format!("{} clipboard error: {}", std::env::consts::OS, e);
+  NapiError::new(Status::GenericFailure, reason) // Use Status::GenericFailure
 }
 
 /// クリップボードから読み取ったデータを保持する構造体
