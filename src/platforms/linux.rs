@@ -7,37 +7,35 @@ use std::fs;
 
 // xclip コマンドを使用してファイルパスをクリップボードにコピーする
 pub fn write_clipboard_file_paths(paths: &[String]) -> Result<(), Error> {
-  // 入力が空の場合は空の配列を返す
-  if paths.is_empty() {
-    return Ok(());
-  }
-
   // URIに変換
   let mut uri_paths = Vec::new();
   let mut errors = Vec::new();
 
-  // 各パスをURIに変換
-  for path in paths {
-    let canonical_path = match fs::canonicalize(path) {
-      Ok(p) => p,
-      Err(e) => {
-        errors.push(format!("Failed to canonicalize path {}: {}", path, e));
-        continue;
-      }
-    };
+  // パスがある場合のみURIへの変換を行う
+  if !paths.is_empty() {
+    // 各パスをURIに変換
+    for path in paths {
+      let canonical_path = match fs::canonicalize(path) {
+        Ok(p) => p,
+        Err(e) => {
+          errors.push(format!("Failed to canonicalize path {}: {}", path, e));
+          continue;
+        }
+      };
 
-    // file:// URIを作成
-    let uri = format!("file://{}", canonical_path.display());
-    uri_paths.push(uri);
-  }
+      // file:// URIを作成
+      let uri = format!("file://{}", canonical_path.display());
+      uri_paths.push(uri);
+    }
 
-  // 無効なパスが一つでもあればエラー
-  if !errors.is_empty() {
-    let error_message = format!(
-      "Some paths could not be processed: {}",
-      errors.join("; ")
-    );
-    return Err(Error::new(ErrorKind::InvalidInput, error_message));
+    // 無効なパスが一つでもあればエラー
+    if !errors.is_empty() {
+      let error_message = format!(
+        "Some paths could not be processed: {}",
+        errors.join("; ")
+      );
+      return Err(Error::new(ErrorKind::InvalidInput, error_message));
+    }
   }
 
   // URIをタブ区切りでつなげる（GNOMEの標準フォーマット）
@@ -65,7 +63,14 @@ pub fn write_clipboard_file_paths(paths: &[String]) -> Result<(), Error> {
     });
 
   match status {
-    Ok(exit_status) if exit_status.success() => Ok(()),
+    Ok(exit_status) if exit_status.success() => {
+      if paths.is_empty() {
+        println!("Cleared clipboard data (empty file list)");
+      } else {
+        println!("Copied {} files to clipboard on Linux", paths.len());
+      }
+      Ok(())
+    },
     Ok(exit_status) => Err(Error::new(
       ErrorKind::Other,
       format!(

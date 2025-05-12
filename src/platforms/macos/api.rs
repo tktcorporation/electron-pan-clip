@@ -88,11 +88,6 @@ impl ClipboardOperations for MockClipboard {
 
 /// ファイルパスをクリップボードにコピーする
 pub fn write_clipboard_file_paths(paths: &[String]) -> Result<(), Error> {
-  // 入力が空の場合は空の配列を返す
-  if paths.is_empty() {
-    return Ok(());
-  }
-
   // AutoreleasePoolを作成
   let _pool = AutoreleasePool::new()?;
 
@@ -102,6 +97,12 @@ pub fn write_clipboard_file_paths(paths: &[String]) -> Result<(), Error> {
 
   // 内容をクリア
   pasteboard.clear_contents();
+
+  // 空の配列の場合は、クリップボードをクリアして終了
+  if paths.is_empty() {
+    println!("Cleared clipboard data (empty file list)");
+    return Ok(());
+  }
 
   // ファイルURLの配列を作成
   let mut urls = Vec::new();
