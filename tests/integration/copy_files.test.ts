@@ -300,7 +300,7 @@ describe("clip-filepaths", () => {
 			expect(allPathsFound).toBe(true);
 		});
 
-		it("空のクリップボードから読み取った場合は空の配列が返ること (現状クリア不可)", async () => {
+		it("空のクリップボードから読み取った場合は空の配列が返ること", async () => {
 			await clearClipboard();
 			const clipboardContent = readClipboardResults();
 			expect(clipboardContent.filePaths).toHaveLength(0);
