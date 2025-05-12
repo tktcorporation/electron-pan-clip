@@ -44,7 +44,7 @@ export declare function helloWorld(): string
  * * This function will actually change the contents of the system clipboard.
  * * Please be careful when running tests.
  */
-export declare function writeClipboardFilePaths(paths: Array<string>): NapiResult
+export declare function writeClipboardFilePaths(paths: Array<string>): void
 /**
  * Reads content from the OS clipboard, trying to extract both file paths and text independently.
  *

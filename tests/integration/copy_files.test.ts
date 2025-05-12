@@ -31,12 +31,8 @@ async function createTempFile(content = "test content"): Promise<TempFile> {
 
 // クリップボードをクリアする関数（プラットフォーム依存のため実装が必要）
 async function clearClipboard(): Promise<void> {
-	try {
-		// ライブラリの関数で空配列を書き込み＝クリア扱い
-		writeClipboardFilePaths([]);
-	} catch {
-		// 失敗しても無視（CI 環境などで clipboard が無い場合）
-	}
+	// ライブラリの関数で空配列を書き込み＝クリア扱い
+	return writeClipboardFilePaths([]);
 }
 
 describe("clip-filepaths", () => {
@@ -132,7 +128,7 @@ describe("clip-filepaths", () => {
 			tempFile.cleanup();
 		});
 
-		it("存在するファイルパスを指定した場合はエラーをスローすること", () => {
+		it("存在しないファイルパスを指定した場合はエラーをスローすること", () => {
 			const invalidFileName = `nonexistent-${crypto.randomUUID()}.png`;
 			const invalidPaths = [path.join(os.tmpdir(), invalidFileName)];
 
@@ -145,7 +141,7 @@ describe("clip-filepaths", () => {
 			try {
 				writeClipboardFilePaths(invalidPaths);
 				// ここに到達した場合、エラーがスローされなかった
-				throw new Error("エラーがスローされませんでした");
+				expect("Errorが期待されています").toBe(false);
 			} catch (error) {
 				// エラーがスローされた場合
 				console.log("期待通りエラーがスローされました:", error);
@@ -304,7 +300,7 @@ describe("clip-filepaths", () => {
 			expect(allPathsFound).toBe(true);
 		});
 
-		it.skip("空のクリップボードから読み取った場合は空の配列が返ること (現状クリア不可)", async () => {
+		it("空のクリップボードから読み取った場合は空の配列が返ること (現状クリア不可)", async () => {
 			await clearClipboard();
 			const clipboardContent = readClipboardResults();
 			expect(clipboardContent.filePaths).toHaveLength(0);
@@ -401,7 +397,12 @@ describe("clip-filepaths", () => {
 			const mixedPaths = [tempFile.path, nonExistingPath];
 
 			// エラーが発生することを確認
-			expect(() => writeClipboardFilePaths(mixedPaths)).toThrow();
+			try {
+				await writeClipboardFilePaths(mixedPaths);
+				expect("Error").toBe(false);
+			} catch (error) {
+				expect(error).toBeInstanceOf(Error);
+			}
 
 			// クリーンアップ
 			tempFile.cleanup();

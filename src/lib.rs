@@ -21,7 +21,6 @@ use platforms::macos as current_platform;
 use platforms::linux as current_platform;
 
 // napi エラー型エイリアス
-type NapiResult<T> = napi::Result<T>;
 type NapiError = napi::Error;
 use napi::Status; // Import Status
 
@@ -48,9 +47,9 @@ pub struct ClipboardContent {
 #[derive(Debug)]
 pub struct ClipboardReadResult {
   /// ファイルパス読み取りの結果。成功時は`Vec<String>`、失敗時は`napi::Error`。
-  pub file_paths: NapiResult<Vec<String>>,
+  pub file_paths: Result<Vec<String>, NapiError>,
   /// テキスト読み取りの結果。成功時は`Option<String>`、失敗時は`napi::Error`。
-  pub text: NapiResult<Option<String>>,
+  pub text: Result<Option<String>, NapiError>,
 }
 
 /// クリップボードのバイナリデータを読みやすい形式で表示するための構造体
@@ -100,7 +99,7 @@ pub fn hello_world() -> String {
 /// * This function will actually change the contents of the system clipboard.
 /// * Please be careful when running tests.
 #[napi]
-pub fn write_clipboard_file_paths(paths: Vec<String>) -> NapiResult<()> {
+pub fn write_clipboard_file_paths(paths: Vec<String>) -> Result<(), NapiError> {
   // 空の配列の場合は早期リターンするが、エラーではなく成功として扱う
   if paths.is_empty() {
     return Ok(());
