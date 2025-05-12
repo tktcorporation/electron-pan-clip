@@ -3,46 +3,41 @@
 use std::io::{Error, ErrorKind};
 use std::path::Path;
 use std::process::Command;
+use std::fs;
 
 // xclip コマンドを使用してファイルパスをクリップボードにコピーする
-pub fn copy_files_to_clipboard(paths: &[String]) -> Result<(), Error> {
-  // ファイルパスをURIに変換
+pub fn write_clipboard_file_paths(paths: &[String]) -> Result<(), Error> {
+  // 入力が空の場合は空の配列を返す
+  if paths.is_empty() {
+    return Ok(());
+  }
+
+  // URIに変換
   let mut uri_paths = Vec::new();
   let mut errors = Vec::new();
 
+  // 各パスをURIに変換
   for path in paths {
-    // 絶対パスに変換
-    match Path::new(path).canonicalize() {
-      Ok(abs_path) => {
-        // file:// URIを作成
-        let uri = format!("file://{}", abs_path.display());
-        uri_paths.push(uri);
-      }
+    let canonical_path = match fs::canonicalize(path) {
+      Ok(p) => p,
       Err(e) => {
         errors.push(format!("Failed to canonicalize path {}: {}", path, e));
+        continue;
       }
-    }
+    };
+
+    // file:// URIを作成
+    let uri = format!("file://{}", canonical_path.display());
+    uri_paths.push(uri);
   }
 
-  // エラーがあった場合は、処理を中断してエラーを返す
+  // 無効なパスが一つでもあればエラー
   if !errors.is_empty() {
-    let error_message = format!("Some paths could not be processed: {}", errors.join("; "));
-    // 入力に不正（存在しないパス）が含まれていたため InvalidInput を返す
-    return Err(Error::new(ErrorKind::InvalidInput, error_message));
-  }
-
-  // 有効なURIがない場合はエラー
-  if uri_paths.is_empty() {
     let error_message = format!(
-      "No valid URIs could be created from the paths. Errors: {}",
+      "Some paths could not be processed: {}",
       errors.join("; ")
     );
     return Err(Error::new(ErrorKind::InvalidInput, error_message));
-  }
-
-  // 一部の失敗があった場合は警告を出す
-  if !errors.is_empty() {
-    eprintln!("Warning: Some paths failed: {}", errors.join("; "));
   }
 
   // URIをタブ区切りでつなげる（GNOMEの標準フォーマット）
@@ -148,11 +143,9 @@ pub fn read_clipboard_file_paths() -> Result<Vec<String>, Error> {
   if output.status.success() {
     let content = String::from_utf8_lossy(&output.stdout).into_owned();
 
+    // 空のクリップボードの場合は空の配列を返す
     if content.is_empty() {
-      return Err(Error::new(
-        ErrorKind::Other,
-        "No file URI content in clipboard",
-      ));
+      return Ok(Vec::new());
     }
 
     // URIをパースしてファイルパスに変換
@@ -174,14 +167,8 @@ pub fn read_clipboard_file_paths() -> Result<Vec<String>, Error> {
       }
     }
 
-    if paths.is_empty() {
-      Err(Error::new(
-        ErrorKind::Other,
-        "No valid file paths found in clipboard",
-      ))
-    } else {
-      Ok(paths)
-    }
+    // 有効なパスが見つからなくても空の配列を返す
+    Ok(paths)
   } else {
     let error = String::from_utf8_lossy(&output.stderr).into_owned();
     Err(Error::new(
@@ -230,7 +217,7 @@ mod tests {
     ];
 
     // copy_files_to_clipboard を呼び出すが、エラーが発生することを期待
-    let result = copy_files_to_clipboard(&invalid_paths);
+    let result = write_clipboard_file_paths(&invalid_paths);
     assert!(result.is_err());
 
     // エラーの種類とメッセージを検証
@@ -252,7 +239,7 @@ mod tests {
     let path_str = test_file_path.to_string_lossy().to_string();
 
     // クリップボードにコピー
-    let result = copy_files_to_clipboard(&[path_str]);
+    let result = write_clipboard_file_paths(&[path_str]);
 
     // xclip がない環境や X11 がない環境では失敗することがある
     // その場合はテストをパスさせるか、環境に応じた処理が必要

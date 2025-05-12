@@ -100,14 +100,9 @@ pub fn hello_world() -> String {
 /// * Please be careful when running tests.
 #[napi]
 pub fn write_clipboard_file_paths(paths: Vec<String>) -> Result<(), NapiError> {
-  // 空の配列の場合は早期リターンするが、エラーではなく成功として扱う
-  if paths.is_empty() {
-    return Ok(());
-  }
-
   #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
   {
-    current_platform::copy_files_to_clipboard(&paths).map_err(platform_error_to_napi)?;
+    current_platform::write_clipboard_file_paths(&paths).map_err(platform_error_to_napi)?;
     println!("write_clipboard_file_paths: {:?}", &paths);
   }
 
@@ -245,6 +240,7 @@ mod tests {
   #[test]
   fn test_write_clipboard_file_paths_empty_input() {
     let result = write_clipboard_file_paths(vec![]);
+    println!("test_write_clipboard_file_paths_empty_input: {:?}", result);
     assert!(result.is_ok());
   }
 

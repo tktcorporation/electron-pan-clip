@@ -47,7 +47,13 @@ extern "system" {
   fn GlobalFree(hMem: *mut c_void) -> *mut c_void;
 }
 
-pub fn copy_files_to_clipboard(paths: &[String]) -> Result<(), Error> {
+/// ファイルパスをクリップボードにコピーする
+pub fn write_clipboard_file_paths(paths: &[String]) -> Result<(), Error> {
+  // 入力が空の場合は空の配列を返す
+  if paths.is_empty() {
+    return Ok(());
+  }
+
   // 1. パスリストをワイド文字列（UTF-16）に変換し、ダブルNULL終端形式にする
   let mut wide_paths: Vec<u16> = paths
     .iter()
@@ -404,7 +410,7 @@ mod tests {
     let path_str = test_file_path.to_string_lossy().to_string();
 
     // クリップボードにコピー
-    let result = copy_files_to_clipboard(&[path_str]);
+    let result = write_clipboard_file_paths(&[path_str]);
     assert!(result.is_ok(), "Failed to copy files: {:?}", result);
 
     // テスト後にファイルを削除
@@ -416,7 +422,7 @@ mod tests {
   // エラーにはならない。ただし実用上は空リスト前にチェックする方が良い
   #[test]
   fn test_empty_paths() {
-    let result = copy_files_to_clipboard(&[]);
+    let result = write_clipboard_file_paths(&[]);
     // この実装では空リストでもエラーにはならない
     // 注: lib.rs側で空チェックを行っているため、通常は到達しない
     assert!(result.is_ok());

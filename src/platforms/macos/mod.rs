@@ -5,7 +5,7 @@ mod wrapper;
 
 // 公開API
 pub use api::{
-  copy_files_to_clipboard, read_clipboard_file_paths, read_clipboard_raw, read_clipboard_text,
+  write_clipboard_file_paths, read_clipboard_file_paths, read_clipboard_raw, read_clipboard_text,
 };
 
 // テスト用の公開API

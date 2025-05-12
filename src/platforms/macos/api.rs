@@ -87,7 +87,12 @@ impl ClipboardOperations for MockClipboard {
 }
 
 /// ファイルパスをクリップボードにコピーする
-pub fn copy_files_to_clipboard(paths: &[String]) -> Result<(), Error> {
+pub fn write_clipboard_file_paths(paths: &[String]) -> Result<(), Error> {
+  // 入力が空の場合は空の配列を返す
+  if paths.is_empty() {
+    return Ok(());
+  }
+
   // AutoreleasePoolを作成
   let _pool = AutoreleasePool::new()?;
 
@@ -122,21 +127,13 @@ pub fn copy_files_to_clipboard(paths: &[String]) -> Result<(), Error> {
     }
   }
 
-  // 有効なURLがない場合はエラー
-  if urls.is_empty() {
+  // 無効なパスが一つでもあればエラー
+  if !errors.is_empty() {
     let error_message = format!(
-      "No valid URIs could be created from the paths. Errors: {}",
+      "Some paths could not be processed: {}",
       errors.join("; ")
     );
     return Err(Error::new(ErrorKind::InvalidInput, error_message));
-  }
-
-  // 警告ログ
-  if !errors.is_empty() {
-    eprintln!(
-      "Warning: Some paths could not be processed: {}",
-      errors.join("; ")
-    );
   }
 
   // クリップボードのタイプを設定
@@ -369,12 +366,6 @@ pub fn read_clipboard_file_paths() -> Result<Vec<String>, Error> {
     }
   }
 
-  if paths.is_empty() {
-    Err(Error::new(
-      ErrorKind::NotFound,
-      "No file paths found on clipboard",
-    ))
-  } else {
-    Ok(paths)
-  }
+  // 空の場合でも空配列を返す（エラーにしない）
+  Ok(paths)
 }

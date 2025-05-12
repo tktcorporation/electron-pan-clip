@@ -99,7 +99,7 @@ fn test_read_clipboard_raw() {
 #[test]
 #[ignore] // 通常は無視されるテスト
 fn test_read_clipboard_file_paths() {
-  use crate::platforms::macos::api::{copy_files_to_clipboard, read_clipboard_file_paths};
+  use crate::platforms::macos::api::{write_clipboard_file_paths, read_clipboard_file_paths};
   use std::env::temp_dir;
   use std::fs::File;
 
@@ -111,7 +111,7 @@ fn test_read_clipboard_file_paths() {
 
   // ファイルパスをクリップボードにコピー
   let path_str = test_file_path.to_string_lossy().to_string();
-  let copy_result = copy_files_to_clipboard(&[path_str]);
+  let copy_result = write_clipboard_file_paths(&[path_str]);
 
   match copy_result {
     Ok(_) => {
