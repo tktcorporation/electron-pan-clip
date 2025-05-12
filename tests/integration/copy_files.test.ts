@@ -137,16 +137,44 @@ describe("clip-filepaths", () => {
 				fs.unlinkSync(invalidPaths[0]);
 			}
 
-			// 同期でエラーチェック
+			// 共通のエラーチェック
+			// プラットフォームに関係なく、存在しないファイルはエラーになる
+			expect(() => writeClipboardFilePaths(invalidPaths)).toThrow();
+			
+			// 詳細なエラーメッセージのチェック
 			try {
 				writeClipboardFilePaths(invalidPaths);
-				// ここに到達した場合、エラーがスローされなかった
-				expect("Errorが期待されています").toBe(false);
+				// ここに到達すべきではない - 存在しないファイルパスの指定でエラーが発生するはず
+				expect(true).toBe(false);
 			} catch (error) {
-				// エラーがスローされた場合
-				console.log("期待通りエラーがスローされました:", error);
-				// エラーの種類やメッセージをさらに検証できる
+				const errorMessage = (error as Error).message;
+				
+				// プラットフォーム共通のエラー検証
+				// 1. エラーは Error インスタンスである
 				expect(error).toBeInstanceOf(Error);
+				
+				// 2. エラーメッセージにパスが含まれている（パス名のみで、ファイル名は検証）
+				expect(errorMessage).toContain(invalidFileName);
+				
+				// 3. プラットフォーム固有のエラーチェックを行わず、共通のエラーパターンのみを検証
+				// どのプラットフォームでも「パスが存在しない/見つからない」という内容のエラーになるはず
+				const commonErrorPatterns = [
+					/not found/i,
+					/no such file/i,
+					/not exist/i,
+					/invalid/i,
+					/does not exist/i,
+					/couldn't be processed/i,
+					/could not be processed/i,
+					/failed/i
+				];
+				
+				// いずれかのパターンに一致することを確認
+				const matchesPattern = commonErrorPatterns.some(pattern => 
+					pattern.test(errorMessage)
+				);
+				
+				expect(matchesPattern).toBe(true);
 			}
 		});
 

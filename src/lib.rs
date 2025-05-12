@@ -23,6 +23,8 @@ use platforms::linux as current_platform;
 // napi エラー型エイリアス
 type NapiError = napi::Error;
 use napi::Status; // Import Status
+use std::io::{Error as IoError, ErrorKind};
+use std::fs; // ... existing code ...
 
 // OS固有のエラーをNapiエラーに変換するヘルパー関数
 #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
@@ -102,6 +104,27 @@ pub fn hello_world() -> String {
 pub fn write_clipboard_file_paths(paths: Vec<String>) -> Result<(), NapiError> {
   #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
   {
+    // === 追加: 事前バリデーションで全プラットフォーム共通メッセージを生成 ===
+    let mut errors: Vec<String> = Vec::new();
+
+    for p in &paths {
+      if let Err(e) = fs::canonicalize(p) {
+        // Linux/macOS 実装に合わせてメッセージを生成
+        errors.push(format!("Failed to canonicalize path {}: {}", p, e));
+      }
+    }
+
+    if !errors.is_empty() {
+      let joined = errors.join("; ");
+      let io_err = IoError::new(
+        ErrorKind::InvalidInput,
+        format!("Some paths could not be processed: {}", joined),
+      );
+      // OS名前付きの共通メッセージに変換
+      return Err(platform_error_to_napi(io_err));
+    }
+
+    // パスが有効であれば OS 依存の実装に委譲
     current_platform::write_clipboard_file_paths(&paths).map_err(platform_error_to_napi)?;
     println!("write_clipboard_file_paths: {:?}", &paths);
   }
