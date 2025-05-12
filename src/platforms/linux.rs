@@ -1,7 +1,6 @@
 // Linux向けのクリップボード操作実装
 
 use std::io::{Error, ErrorKind};
-use std::path::Path;
 use std::process::Command;
 use std::fs;
 
@@ -188,6 +187,7 @@ mod tests {
   use super::*;
   use std::env::temp_dir;
   use std::fs::File;
+  use std::path::Path;
 
   // URI生成の基本的なテスト
   #[test]

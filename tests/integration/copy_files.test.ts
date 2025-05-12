@@ -304,6 +304,7 @@ describe("clip-filepaths", () => {
 			await clearClipboard();
 			const clipboardContent = readClipboardResults();
 			expect(clipboardContent.filePaths).toHaveLength(0);
+			expect(clipboardContent.text).toBe(undefined);
 		});
 
 		it("テキストのみを含むクリップボードを正しく読み取れること", async () => {
@@ -374,6 +375,34 @@ describe("clip-filepaths", () => {
 			expect(clipboardContent1.filePaths.sort()).toEqual(
 				clipboardContent2.filePaths.sort(),
 			);
+
+			// クリーンアップ
+			tempFile1.cleanup();
+			tempFile2.cleanup();
+		});
+
+		it("空の配列でwriteClipboardFilePathsを呼び出すとクリップボードがクリアされること", async () => {
+			// 複数の一時ファイルを作成
+			const tempFile1 = await createTempFile("ファイル1");
+			const tempFile2 = await createTempFile("ファイル2");
+			const filesToCopy = [tempFile1.path, tempFile2.path];
+
+			// クリップボードに書き込み
+			await writeClipboardFilePaths(filesToCopy);
+
+			// 書き込みが成功したことを確認
+			const clipboardContent1 = readClipboardResults();
+			expect(clipboardContent1.filePaths.length).toBe(2);
+			expect(clipboardContent1.text).toBeDefined();
+			expect(clipboardContent1.text?.length).toBeGreaterThan(0);
+
+			// 空の配列で書き込み（クリア操作）
+			await writeClipboardFilePaths([]);
+
+			// クリップボードがクリアされたことを確認
+			const clipboardContent2 = readClipboardResults();
+			expect(clipboardContent2.filePaths).toHaveLength(0);
+			expect(clipboardContent2.text).toBe(undefined);
 
 			// クリーンアップ
 			tempFile1.cleanup();
