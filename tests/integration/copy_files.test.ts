@@ -138,7 +138,11 @@ describe("clip-filepaths", () => {
 
 	describe("readClipboardResults", () => {
 		const tmpDir = path.join(os.tmpdir(), "clip-filepaths-read-test");
-		const testFiles: string[] = [];
+		const testFiles: string[] = [
+			path.join(tmpDir, "test-image-0.png"),
+			path.join(tmpDir, "test-image-1.png"),
+			path.join(tmpDir, "test-image-2.png"),
+		];
 
 		// テスト用の一時ファイルを作成
 		beforeEach(() => {
@@ -148,9 +152,7 @@ describe("clip-filepaths", () => {
 			}
 
 			// テスト用画像ファイルを作成
-			for (let i = 0; i < 3; i++) {
-				const filePath = path.join(tmpDir, `test-image-${i}.png`);
-
+			for (const filePath of testFiles) {
 				// 簡易的な1x1のPNGファイル（実際には適切なPNGデータを用意する必要あり）
 				const minimalPng = Buffer.from([
 					0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00,
@@ -163,7 +165,6 @@ describe("clip-filepaths", () => {
 				]);
 
 				fs.writeFileSync(filePath, minimalPng);
-				testFiles.push(filePath);
 			}
 		});
 
@@ -175,7 +176,6 @@ describe("clip-filepaths", () => {
 					fs.unlinkSync(file);
 				}
 			}
-			testFiles.length = 0;
 
 			// ディレクトリを削除
 			if (fs.existsSync(tmpDir)) {

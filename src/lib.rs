@@ -107,6 +107,7 @@ pub fn write_clipboard_file_paths(paths: Vec<String>) -> NapiResult<()> {
   #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
   {
     current_platform::copy_files_to_clipboard(&paths).map_err(platform_error_to_napi)?;
+    println!("write_clipboard_file_paths: {:?}", &paths);
   }
 
   #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
