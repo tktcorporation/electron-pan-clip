@@ -25,6 +25,7 @@ use windows_sys::Win32::{
 
 // シェルフォーマットの定数
 const CF_HDROP: u32 = 15;
+const CF_UNICODETEXT: u32 = 13; // Unicode テキスト形式
 
 // Shell.h から DROPFILES 構造体を定義
 #[repr(C)]
@@ -129,7 +130,7 @@ pub fn write_clipboard_file_paths(paths: &[String]) -> Result<(), Error> {
     // 7. メモリをアンロック
     GlobalUnlock(h_global);
 
-    // 10. CF_HDROP 形式でデータをクリップボードに設定
+    // 8. CF_HDROP 形式でデータをクリップボードに設定
     // SetClipboardData が成功すると、OS がメモリの所有権を持つため、GlobalFree を呼んではいけない
     if SetClipboardData(CF_HDROP, h_global as isize) == 0 {
       let err = GetLastError();
@@ -141,7 +142,58 @@ pub fn write_clipboard_file_paths(paths: &[String]) -> Result<(), Error> {
       ));
     }
 
-    // 11. クリップボードを閉じる
+    // 9. ファイルパスをURLとしてもクリップボードに設定する (CF_UNICODETEXT形式)
+    // ファイルパスをURLに変換して連結
+    let url_text = paths
+      .iter()
+      .map(|path| {
+        // 絶対パスに変換
+        let path = Path::new(path);
+        let abs_path = if path.is_absolute() {
+          path.to_path_buf()
+        } else {
+          std::env::current_dir().unwrap_or_default().join(path)
+        };
+
+        // パスをURLに変換 (file:///C:/path/to/file.txt 形式)
+        let path_str = abs_path.to_string_lossy();
+        let file_url = format!("file:///{}", path_str.replace('\\', "/"));
+        file_url
+      })
+      .collect::<Vec<String>>()
+      .join("\n");
+
+    // URLテキストをUTF-16に変換
+    let wide_url = to_wide_null(&url_text);
+    let url_size = wide_url.len() * std::mem::size_of::<u16>();
+
+    // テキスト用にグローバルメモリを確保
+    let h_text = GlobalAlloc(GMEM_MOVEABLE, url_size);
+    if h_text == ptr::null_mut() {
+      // テキスト設定に失敗してもファイルパスは設定できているので、エラーにはしない
+      eprintln!("Warning: Failed to allocate memory for text format");
+    } else {
+      // メモリをロックしてポインタを取得
+      let text_ptr = GlobalLock(h_text) as *mut u8;
+      if !text_ptr.is_null() {
+        // UTF-16テキストを書き込む
+        ptr::copy_nonoverlapping(wide_url.as_ptr() as *const u8, text_ptr, url_size);
+        GlobalUnlock(h_text);
+
+        // CF_UNICODETEXT形式でデータをクリップボードに設定
+        if SetClipboardData(CF_UNICODETEXT, h_text as isize) == 0 {
+          // テキスト設定に失敗した場合は警告を出すだけ
+          eprintln!(
+            "Warning: Failed to set text clipboard data: {}",
+            GetLastError()
+          );
+        }
+      } else {
+        eprintln!("Warning: Failed to lock memory for text format");
+      }
+    }
+
+    // 10. クリップボードを閉じる
     if CloseClipboard() == 0 {
       // この時点ではデータは設定されているが、閉じるのに失敗した
       // エラーとして報告するべきか？ 일단 ここでは警告としておく
