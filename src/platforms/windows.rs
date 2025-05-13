@@ -1,25 +1,35 @@
 #![cfg(target_os = "windows")]
 
+use std::ffi::c_void;
 use std::ffi::OsStr;
+use std::ffi::OsString;
 use std::io::{Error, ErrorKind};
 use std::iter::once;
 use std::mem::{size_of, zeroed};
 use std::os::windows::ffi::OsStrExt;
+use std::os::windows::ffi::OsStringExt;
+use std::path::Path;
 use std::ptr;
 
 use windows_sys::Win32::{
   Foundation::{GetLastError, HWND},
   System::{
-    DataExchange::{CloseClipboard, EmptyClipboard, OpenClipboard, SetClipboardData},
-    Memory::{GlobalAlloc, GlobalLock, GlobalUnlock, GMEM_MOVEABLE},
+    DataExchange::{
+      CloseClipboard, EmptyClipboard, GetClipboardData, IsClipboardFormatAvailable, OpenClipboard,
+      SetClipboardData,
+    },
+    Memory::{GlobalAlloc, GlobalLock, GlobalSize, GlobalUnlock, GMEM_MOVEABLE},
   },
+  UI::Shell::DragQueryFileW,
 };
 
 // シェルフォーマットの定数
 const CF_HDROP: u32 = 15;
+const CF_UNICODETEXT: u32 = 13; // Unicode テキスト形式
 
 // Shell.h から DROPFILES 構造体を定義
 #[repr(C)]
+#[allow(non_snake_case)]
 struct DROPFILES {
   pFiles: u32,
   pt: windows_sys::Win32::Foundation::POINT,
@@ -32,26 +42,60 @@ fn to_wide_null(s: &str) -> Vec<u16> {
   OsStr::new(s).encode_wide().chain(once(0)).collect()
 }
 
-pub fn copy_files_to_clipboard(paths: &[String]) -> Result<(), Error> {
-  // 1. パスリストをワイド文字列（UTF-16）に変換し、ダブルNULL終端形式にする
-  let mut wide_paths: Vec<u16> = paths
-    .iter()
-    .map(|p| to_wide_null(p)) // 各パスを NULL 終端 UTF-16 に変換
-    .flatten() // 平坦化して連結
-    .collect();
-  wide_paths.push(0); // リストの最後に NULL を追加してダブルNULL終端にする
+// HGLOBAL用のGlobalFree関数（Kernel32.dllから直接インポート）
+#[link(name = "kernel32")]
+extern "system" {
+  fn GlobalFree(hMem: *mut c_void) -> *mut c_void;
+}
 
-  // 2. DROPFILES 構造体とパスリストを格納するためのメモリサイズを計算
-  let dropfiles_size = size_of::<DROPFILES>();
-  let paths_size = wide_paths.len() * size_of::<u16>();
-  let total_size = dropfiles_size + paths_size;
-
+/// ファイルパスをクリップボードにコピーする
+pub fn write_clipboard_file_paths(paths: &[String]) -> Result<(), Error> {
   unsafe {
+    // クリップボードを開く (所有者を指定しない場合は NULL)
+    if OpenClipboard(0) == 0 {
+      let err = GetLastError();
+      return Err(Error::new(
+        ErrorKind::Other,
+        format!("Failed to open clipboard: {}", err),
+      ));
+    }
+
+    // クリップボードを空にする
+    if EmptyClipboard() == 0 {
+      let err = GetLastError();
+      CloseClipboard();
+      return Err(Error::new(
+        ErrorKind::Other,
+        format!("Failed to empty clipboard: {}", err),
+      ));
+    }
+
+    // 空の配列の場合はクリップボードをクリアして終了
+    if paths.is_empty() {
+      CloseClipboard();
+      println!("Cleared clipboard data (empty file list)");
+      return Ok(());
+    }
+
+    // 1. パスリストをワイド文字列（UTF-16）に変換し、ダブルNULL終端形式にする
+    let mut wide_paths: Vec<u16> = paths
+      .iter()
+      .map(|p| to_wide_null(p)) // 各パスを NULL 終端 UTF-16 に変換
+      .flatten() // 平坦化して連結
+      .collect();
+    wide_paths.push(0); // リストの最後に NULL を追加してダブルNULL終端にする
+
+    // 2. DROPFILES 構造体とパスリストを格納するためのメモリサイズを計算
+    let dropfiles_size = std::mem::size_of::<DROPFILES>();
+    let paths_size = wide_paths.len() * std::mem::size_of::<u16>();
+    let total_size = dropfiles_size + paths_size;
+
     // 3. グローバルメモリを確保
     // CF_HDROP は GMEM_MOVEABLE である必要がある
     let h_global = GlobalAlloc(GMEM_MOVEABLE, total_size);
     if h_global == ptr::null_mut() {
       let err = GetLastError();
+      CloseClipboard();
       return Err(Error::new(
         ErrorKind::Other,
         format!("Failed to allocate global memory: {}", err),
@@ -63,6 +107,7 @@ pub fn copy_files_to_clipboard(paths: &[String]) -> Result<(), Error> {
     if buffer_ptr.is_null() {
       let err = GetLastError();
       // GlobalFree(h_global); // windows-sys 0.52 では GlobalFree が直接使えないので代わりに Windows API を直接呼び出す
+      CloseClipboard();
       return Err(Error::new(
         ErrorKind::Other,
         format!("Failed to lock global memory: {}", err),
@@ -85,28 +130,7 @@ pub fn copy_files_to_clipboard(paths: &[String]) -> Result<(), Error> {
     // 7. メモリをアンロック
     GlobalUnlock(h_global);
 
-    // 8. クリップボードを開く (所有者を指定しない場合は NULL)
-    if OpenClipboard(0) == 0 {
-      let err = GetLastError();
-      // GlobalFree(h_global); // GlobalFree が直接使えない
-      return Err(Error::new(
-        ErrorKind::Other,
-        format!("Failed to open clipboard: {}", err),
-      ));
-    }
-
-    // 9. クリップボードを空にする
-    if EmptyClipboard() == 0 {
-      let err = GetLastError();
-      CloseClipboard();
-      // GlobalFree(h_global);
-      return Err(Error::new(
-        ErrorKind::Other,
-        format!("Failed to empty clipboard: {}", err),
-      ));
-    }
-
-    // 10. CF_HDROP 形式でデータをクリップボードに設定
+    // 8. CF_HDROP 形式でデータをクリップボードに設定
     // SetClipboardData が成功すると、OS がメモリの所有権を持つため、GlobalFree を呼んではいけない
     if SetClipboardData(CF_HDROP, h_global as isize) == 0 {
       let err = GetLastError();
@@ -118,16 +142,257 @@ pub fn copy_files_to_clipboard(paths: &[String]) -> Result<(), Error> {
       ));
     }
 
-    // 11. クリップボードを閉じる
+    // 9. ファイルパスをURLとしてもクリップボードに設定する (CF_UNICODETEXT形式)
+    // ファイルパスをURLに変換して連結
+    let url_text = paths
+      .iter()
+      .map(|path| {
+        // 絶対パスに変換
+        let path = Path::new(path);
+        let abs_path = if path.is_absolute() {
+          path.to_path_buf()
+        } else {
+          std::env::current_dir().unwrap_or_default().join(path)
+        };
+
+        // パスをURLに変換 (file:///C:/path/to/file.txt 形式)
+        let path_str = abs_path.to_string_lossy();
+        let file_url = format!("file:///{}", path_str.replace('\\', "/"));
+        file_url
+      })
+      .collect::<Vec<String>>()
+      .join("\n");
+
+    // URLテキストをUTF-16に変換
+    let wide_url = to_wide_null(&url_text);
+    let url_size = wide_url.len() * std::mem::size_of::<u16>();
+
+    // テキスト用にグローバルメモリを確保
+    let h_text = GlobalAlloc(GMEM_MOVEABLE, url_size);
+    if h_text == ptr::null_mut() {
+      // テキスト設定に失敗してもファイルパスは設定できているので、エラーにはしない
+      eprintln!("Warning: Failed to allocate memory for text format");
+    } else {
+      // メモリをロックしてポインタを取得
+      let text_ptr = GlobalLock(h_text) as *mut u8;
+      if !text_ptr.is_null() {
+        // UTF-16テキストを書き込む
+        ptr::copy_nonoverlapping(wide_url.as_ptr() as *const u8, text_ptr, url_size);
+        GlobalUnlock(h_text);
+
+        // CF_UNICODETEXT形式でデータをクリップボードに設定
+        if SetClipboardData(CF_UNICODETEXT, h_text as isize) == 0 {
+          // テキスト設定に失敗した場合は警告を出すだけ
+          eprintln!(
+            "Warning: Failed to set text clipboard data: {}",
+            GetLastError()
+          );
+        }
+      } else {
+        eprintln!("Warning: Failed to lock memory for text format");
+      }
+    }
+
+    // 10. クリップボードを閉じる
     if CloseClipboard() == 0 {
       // この時点ではデータは設定されているが、閉じるのに失敗した
       // エラーとして報告するべきか？ 일단 ここでは警告としておく
       eprintln!("Warning: Failed to close clipboard: {}", GetLastError());
     }
-  } // unsafe ブロック終了
 
-  println!("Copied files to clipboard on Windows: {:?}", paths);
-  Ok(())
+    println!("Copied {} files to clipboard on Windows", paths.len());
+    Ok(())
+  } // unsafe ブロック終了
+}
+
+// クリップボードからテキストを読み取る
+pub fn read_clipboard_text() -> Result<String, Error> {
+  unsafe {
+    // クリップボードを開く
+    if OpenClipboard(0) == 0 {
+      return Err(Error::new(
+        ErrorKind::Other,
+        format!("Failed to open clipboard: {:?}", GetLastError()),
+      ));
+    }
+
+    // CF_UNICODETEXTフォーマットが利用可能か確認
+    if IsClipboardFormatAvailable(13) == 0 {
+      // CF_UNICODETEXT = 13
+      CloseClipboard();
+      return Err(Error::new(
+        ErrorKind::Other,
+        "No text available in clipboard",
+      ));
+    }
+
+    // クリップボードからデータを取得
+    let handle = GetClipboardData(13); // CF_UNICODETEXT = 13
+    if handle == 0 {
+      CloseClipboard();
+      return Err(Error::new(
+        ErrorKind::Other,
+        format!("Failed to get clipboard data: {:?}", GetLastError()),
+      ));
+    }
+
+    // メモリをロック
+    let ptr = GlobalLock(handle as *mut c_void) as *const u16;
+    if ptr.is_null() {
+      CloseClipboard();
+      return Err(Error::new(
+        ErrorKind::Other,
+        format!("Failed to lock memory: {:?}", GetLastError()),
+      ));
+    }
+
+    // ワイド文字列をRust文字列に変換
+    // ヌル終端の文字列の長さを計算
+    let mut len = 0;
+    while *ptr.add(len) != 0 {
+      len += 1;
+    }
+
+    let wstr = std::slice::from_raw_parts(ptr, len);
+    let text = String::from_utf16_lossy(wstr);
+
+    // メモリをアンロック
+    GlobalUnlock(handle as *mut c_void);
+
+    // クリップボードを閉じる
+    CloseClipboard();
+
+    Ok(text)
+  }
+}
+
+// クリップボードからRAWデータを読み取る
+pub fn read_clipboard_raw() -> Result<Vec<u8>, Error> {
+  unsafe {
+    // クリップボードを開く
+    if OpenClipboard(0) == 0 {
+      return Err(Error::new(
+        ErrorKind::Other,
+        format!("Failed to open clipboard: {:?}", GetLastError()),
+      ));
+    }
+
+    // 利用可能なフォーマットを調べる - 最初の利用可能なフォーマットを使用
+    let format_id = 13; // CF_UNICODETEXT = 13
+
+    // クリップボードからデータを取得
+    let handle = GetClipboardData(format_id);
+    if handle == 0 {
+      CloseClipboard();
+      return Err(Error::new(
+        ErrorKind::Other,
+        format!("Failed to get clipboard data: {:?}", GetLastError()),
+      ));
+    }
+
+    // メモリをロック
+    let ptr = GlobalLock(handle as *mut c_void);
+    if ptr.is_null() {
+      CloseClipboard();
+      return Err(Error::new(
+        ErrorKind::Other,
+        format!("Failed to lock memory: {:?}", GetLastError()),
+      ));
+    }
+
+    // グローバルメモリのサイズを取得
+    let size = GlobalSize(handle as *mut c_void);
+
+    // バイトデータをコピー
+    let data = if size > 0 {
+      let slice = std::slice::from_raw_parts(ptr as *const u8, size);
+      slice.to_vec()
+    } else {
+      Vec::new()
+    };
+
+    // メモリをアンロック
+    GlobalUnlock(handle as *mut c_void);
+
+    // クリップボードを閉じる
+    CloseClipboard();
+
+    if data.is_empty() {
+      Err(Error::new(
+        ErrorKind::Other,
+        "No data available in clipboard",
+      ))
+    } else {
+      Ok(data)
+    }
+  }
+}
+
+// クリップボードからファイルパスを読み取る
+pub fn read_clipboard_file_paths() -> Result<Vec<String>, Error> {
+  unsafe {
+    // クリップボードを開く
+    if OpenClipboard(0) == 0 {
+      return Err(Error::new(
+        ErrorKind::Other,
+        format!("Failed to open clipboard: {:?}", GetLastError()),
+      ));
+    }
+
+    // CF_HDROPフォーマットが利用可能か確認
+    if IsClipboardFormatAvailable(CF_HDROP) == 0 {
+      CloseClipboard();
+      return Err(Error::new(
+        ErrorKind::Other,
+        "No file paths available in clipboard",
+      ));
+    }
+
+    // クリップボードからデータを取得
+    let hdrop = GetClipboardData(CF_HDROP);
+    if hdrop == 0 {
+      CloseClipboard();
+      return Err(Error::new(ErrorKind::Other, "Failed to get clipboard data"));
+    }
+
+    // ファイル数を取得 (0xFFFFFFFFを指定すると、ファイル数が返る)
+    let file_count = DragQueryFileW(hdrop as isize, 0xFFFFFFFF, ptr::null_mut(), 0);
+
+    let mut paths = Vec::new();
+
+    // 各ファイルパスを取得
+    for i in 0..file_count {
+      // 必要なバッファサイズを取得
+      let size = DragQueryFileW(hdrop as isize, i, ptr::null_mut(), 0) + 1;
+
+      // バッファを確保
+      let mut buffer = vec![0u16; size as usize];
+
+      // ファイル名を取得
+      let length = DragQueryFileW(hdrop as isize, i, buffer.as_mut_ptr(), size);
+
+      if length > 0 {
+        // 実際の長さに合わせてバッファをトリミング
+        buffer.truncate(length as usize);
+
+        // UTF-16文字列をRust文字列に変換
+        let path = String::from_utf16_lossy(&buffer);
+        paths.push(path);
+      }
+    }
+
+    // クリップボードを閉じる
+    CloseClipboard();
+
+    if paths.is_empty() {
+      Err(Error::new(
+        ErrorKind::Other,
+        "No valid file paths found in clipboard",
+      ))
+    } else {
+      Ok(paths)
+    }
+  }
 }
 
 #[cfg(test)]
@@ -199,7 +464,7 @@ mod tests {
     let path_str = test_file_path.to_string_lossy().to_string();
 
     // クリップボードにコピー
-    let result = copy_files_to_clipboard(&[path_str]);
+    let result = write_clipboard_file_paths(&[path_str]);
     assert!(result.is_ok(), "Failed to copy files: {:?}", result);
 
     // テスト後にファイルを削除
@@ -211,7 +476,7 @@ mod tests {
   // エラーにはならない。ただし実用上は空リスト前にチェックする方が良い
   #[test]
   fn test_empty_paths() {
-    let result = copy_files_to_clipboard(&[]);
+    let result = write_clipboard_file_paths(&[]);
     // この実装では空リストでもエラーにはならない
     // 注: lib.rs側で空チェックを行っているため、通常は到達しない
     assert!(result.is_ok());
