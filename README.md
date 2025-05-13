@@ -11,7 +11,6 @@ This library provides functionality for copying and reading file paths and text 
 Built with [napi-rs](https://napi.rs/) and Rust, this library offers:
 - **Multiple file path support**: Copy and read multiple file paths at once
 - **Text support**: Read text from the clipboard
-- **Raw data support**: Read raw binary data from the clipboard
 - Full TypeScript support
 - Cross-platform compatibility
 
@@ -30,21 +29,21 @@ npm install clip-filepaths
 ### Copying File Paths
 
 ```typescript
-import { copyFilePathsToClipboard } from 'clip-filepaths';
+import { writeClipboardFilePaths } from 'clip-filepaths';
 
 // Copy file paths to clipboard
 const filePaths: string[] = ['/path/to/file1.txt', '/path/to/file2.jpg'];
-copyFilePathsToClipboard(filePaths);
+writeClipboardFilePaths(filePaths);
 console.log('File paths copied to clipboard successfully');
 ```
 
 ### Reading Clipboard Content
 
 ```typescript
-import { readClipboardContent } from 'clip-filepaths';
+import { readClipboardFilePaths } from 'clip-filepaths';
 
 // Read both file paths and text from clipboard
-const content = readClipboardContent();
+const content = readClipboardFilePaths();
 console.log('File paths:', content.filePaths);
 console.log('Text:', content.text);
 
@@ -59,14 +58,13 @@ if (content.text) {
 }
 ```
 
-### Reading Raw Data
+### Clear Clipboard
 
 ```typescript
-import { readClipboardRaw } from 'clip-filepaths';
+import { writeClipboardFilePaths } from 'clip-filepaths';
 
-// Read raw binary data from clipboard
-const rawData = readClipboardRaw();
-console.log(`Read ${rawData.length} bytes of raw data from clipboard`);
+// Clear clipboard content by passing an empty array
+writeClipboardFilePaths([]);
 ```
 
 ## Demo
