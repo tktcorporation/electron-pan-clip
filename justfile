@@ -1,4 +1,7 @@
-#!/usr/bin/env -S direnv exec / just --justfile
+#!/usr/bin/env -S just --justfile
+
+set windows-shell := ["powershell.exe", "-NoLogo", "-Command"]
+set shell := ["bash", "-cu"]
 
 # エイリアス定義
 alias r := ready
