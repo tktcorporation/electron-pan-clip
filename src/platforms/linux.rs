@@ -67,17 +67,14 @@ pub fn write_clipboard_file_paths(paths: &[String]) -> Result<(), Error> {
       }
       Ok(())
     }
-    Ok(exit_status) => Err(Error::new(
-      ErrorKind::Other,
-      format!(
-        "xclip command failed with exit code: {:?}",
-        exit_status.code()
-      ),
-    )),
-    Err(e) => Err(Error::new(
-      ErrorKind::Other,
-      format!("Failed to execute xclip command: {}", e),
-    )),
+    Ok(exit_status) => Err(Error::other(format!(
+      "xclip command failed with exit code: {:?}",
+      exit_status.code()
+    ))),
+    Err(e) => Err(Error::other(format!(
+      "Failed to execute xclip command: {}",
+      e
+    ))),
   }
 }
 
@@ -93,16 +90,13 @@ pub fn read_clipboard_text() -> Result<String, Error> {
   if output.status.success() {
     let text = String::from_utf8_lossy(&output.stdout).into_owned();
     if text.is_empty() {
-      Err(Error::new(ErrorKind::Other, "No text content in clipboard"))
+      Err(Error::other("No text content in clipboard"))
     } else {
       Ok(text)
     }
   } else {
     let error = String::from_utf8_lossy(&output.stderr).into_owned();
-    Err(Error::new(
-      ErrorKind::Other,
-      format!("Failed to read clipboard: {}", error),
-    ))
+    Err(Error::other(format!("Failed to read clipboard: {}", error)))
   }
 }
 
@@ -117,16 +111,16 @@ pub fn read_clipboard_raw() -> Result<Vec<u8>, Error> {
 
   if output.status.success() {
     if output.stdout.is_empty() {
-      Err(Error::new(ErrorKind::Other, "No data in clipboard"))
+      Err(Error::other("No data in clipboard"))
     } else {
       Ok(output.stdout)
     }
   } else {
     let error = String::from_utf8_lossy(&output.stderr).into_owned();
-    Err(Error::new(
-      ErrorKind::Other,
-      format!("Failed to read clipboard raw data: {}", error),
-    ))
+    Err(Error::other(format!(
+      "Failed to read clipboard raw data: {}",
+      error
+    )))
   }
 }
 
@@ -172,10 +166,10 @@ pub fn read_clipboard_file_paths() -> Result<Vec<String>, Error> {
     Ok(paths)
   } else {
     let error = String::from_utf8_lossy(&output.stderr).into_owned();
-    Err(Error::new(
-      ErrorKind::Other,
-      format!("Failed to read clipboard for file paths: {}", error),
-    ))
+    Err(Error::other(format!(
+      "Failed to read clipboard for file paths: {}",
+      error
+    )))
   }
 }
 
