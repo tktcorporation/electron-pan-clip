@@ -17,9 +17,14 @@ _default:
 # or install via `cargo install cargo-binstall`
 # Initialize the project by installing all the necessary tools.
 init:
+  cargo install cargo-binstall
   # Rust related init
   cargo binstall watchexec-cli cargo-insta typos-cli cargo-shear dprint -y
-  
+
+  # toolchain
+  rustup component add clippy
+  rustup component add rustfmt
+
   # npm install -g pnpm typescript @napi-rs/cli @antfu/ni
   # Node.js related init
   yarn install
@@ -171,7 +176,7 @@ doc:
 [linux]
 install-linux-deps:
   @echo "📦 Linux依存関係をインストール中..."
-  sudo apt-get update
+  sudo apt-get update -y
   sudo apt-get install -y \
     libx11-dev \
     libxext-dev \
