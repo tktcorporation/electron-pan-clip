@@ -55,4 +55,4 @@
   "remoteEnv": {
     "DISPLAY": "${localEnv:DISPLAY}"
   }
-} 
+}

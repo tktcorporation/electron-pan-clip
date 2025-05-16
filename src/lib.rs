@@ -211,18 +211,15 @@ pub fn read_clipboard_file_paths() -> napi::Result<ClipboardContent> {
       if result.text.is_none() && internal_result.text.is_err() {
         // テキストもファイルパスも取得できなかった場合、raw読み取りを試みる
         #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
-        match current_platform::read_clipboard_raw() {
-          Ok(raw_data) => {
-            if !raw_data.is_empty() {
-              // UTF-8として解釈を試みる
-              if let Ok(text) = String::from_utf8(raw_data.clone()) {
-                if !text.trim().is_empty() {
-                  result.text = Some(text);
-                }
+        if let Ok(raw_data) = current_platform::read_clipboard_raw() {
+          if !raw_data.is_empty() {
+            // UTF-8として解釈を試みる
+            if let Ok(text) = String::from_utf8(raw_data.clone()) {
+              if !text.trim().is_empty() {
+                result.text = Some(text);
               }
             }
           }
-          Err(_) => {} // raw読み取りに失敗した場合は無視
         }
       }
     }
